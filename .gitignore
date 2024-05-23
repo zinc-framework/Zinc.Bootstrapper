@@ -3,12 +3,12 @@ obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
-Dinghy.Bootstrapper/libs/sokol/build/zig-cache/
+/libs/sokol/build/zig-cache/
 
-Dinghy.Bootstrapper/libs/stb/build/zig-cache/
+/libs/stb/build/zig-cache/
 
-Dinghy.Bootstrapper/libs/sokol/build/code
+/libs/sokol/build/code
 
-Dinghy.Bootstrapper/libs/cute/build/zig-cache/
+/libs/cute/build/zig-cache/
 
 .DS_Store

@@ -1,0 +1,7 @@
+﻿@../../../shared/bindgen/base.rsp
+--include-directory
+../src/stb
+--namespace
+Zinc.Internal.STB
+--libraryPath
+libs/stb

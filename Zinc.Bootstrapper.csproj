@@ -7,4 +7,19 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Bullseye" Version="5.0.0" />
+    <PackageReference Include="SimpleExec" Version="12.0.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+    <PackageReference Include="Vezel.Zig.Toolsets.$(NETCoreSdkPortableRuntimeIdentifier)" Version="0.12.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <Target Name="ExportPropertiesToEnvironmentVariables" BeforeTargets="Build">
+      <Message Text="Exporting Zig Properties to env path" Importance="high" />
+      <WriteLinesToFile File="$(IntermediateOutputPath)properties.env" Lines="ZigToolsetPath=$(ZigToolsetPath);ZigExePath=$(ZigExePath);ZigLibPath=$(ZigLibPath);ZigDocPath=$(ZigDocPath)" Overwrite="true" />
+  </Target>
+
 </Project>

@@ -1,0 +1,9 @@
+﻿@base.rsp
+--namespace
+Zinc.Internal
+--file
+helpers.h
+--output
+../../../Zinc.Core/src/generated/lib/helpers/Interop_Helpers.cs
+--config
+generate-helper-types
