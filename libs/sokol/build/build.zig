@@ -97,8 +97,16 @@ pub const LibSokolOptions = struct {
     emsdk: ?*Build.Dependency = null,
 };
 pub fn buildLibSokol(b: *Build, lib: *Step.Compile, options: LibSokolOptions) !void {
+    const opts = b.addOptions();
+    const file_path = b.option([]const u8, "file-path", "Path to the file") orelse "./out";
+    opts.addOption([]const u8, "file-path", file_path);
+    b.lib_dir = std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ file_path, if (options.target.result.isWasm()) "/runtimes/wasi-wasm/native" else if (options.target.result.isDarwin()) "/runtimes/osx-arm64/native" else if (lib.rootModuleTarget().os.tag == .linux) "/runtimes/linux-x64/native" else if (lib.rootModuleTarget().os.tag == .windows) "/runtimes/win-x64/native" else "/runtimes/unknown/native" }) catch |err| {
+        std.debug.print("Failed to concatenate strings: {}\n", .{err});
+        return;
+    };
+
     if (options.target.result.isWasm()) {
-        b.lib_dir = "../Zinc.Core/runtimes/wasi-wasm/native";
+
         // make sure we're building for the wasm32-emscripten target, not wasm32-freestanding
         if (lib.rootModuleTarget().os.tag != .emscripten) {
             std.log.err("Please build with 'zig build -Dtarget=wasm32-emscripten", .{});
@@ -130,7 +138,6 @@ pub fn buildLibSokol(b: *Build, lib: *Step.Compile, options: LibSokolOptions) !v
     var cflags: []const []const u8 = &.{ "-DIMPL", backend_cflags };
     var cppflags: []const []const u8 = &.{ "-DIMPL", backend_cflags };
     if (lib.rootModuleTarget().isDarwin()) {
-        b.lib_dir = "../Zinc.Core/runtimes/osx-arm64/native";
         cflags = &.{ "-ObjC", "-DIMPL", backend_cflags };
         cppflags = &.{ "-ObjC++", "-DIMPL", backend_cflags };
         lib.linkFramework("Foundation");
@@ -162,7 +169,6 @@ pub fn buildLibSokol(b: *Build, lib: *Step.Compile, options: LibSokolOptions) !v
         lib.linkSystemLibrary("android");
         lib.linkSystemLibrary("log");
     } else if (lib.rootModuleTarget().os.tag == .linux) {
-        b.lib_dir = "../Zinc.Core/runtimes/linux-x64/native";
         const egl_cflags = if (options.use_egl) "-DSOKOL_FORCE_EGL " else "";
         const x11_cflags = if (!options.use_x11) "-DSOKOL_DISABLE_X11 " else "";
         const wayland_cflags = if (!options.use_wayland) "-DSOKOL_DISABLE_WAYLAND" else "";
@@ -186,7 +192,6 @@ pub fn buildLibSokol(b: *Build, lib: *Step.Compile, options: LibSokolOptions) !v
             lib.linkSystemLibrary("EGL");
         }
     } else if (lib.rootModuleTarget().os.tag == .windows) {
-        b.lib_dir = "../Zinc.Core/runtimes/win-x64/native";
         lib.linkSystemLibrary("kernel32");
         lib.linkSystemLibrary("user32");
         lib.linkSystemLibrary("gdi32");

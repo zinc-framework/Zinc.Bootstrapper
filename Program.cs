@@ -1,5 +1,4 @@
 ﻿using System.Runtime.InteropServices;
-using System.CommandLine;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -7,11 +6,13 @@ using static Bullseye.Targets;
 using static SimpleExec.Command;
 
 //NOTE: Requires ClangSharpPInvokeGenerator to be installed as a global tool
-var foo = new Option<string>(["--outputPath", "-o",], "output path folder for bindings/libs");
 
 List<string> EmptyList = new List<string>();
 flag traverse = new flag("traverse", EmptyList);
 flag remap = new flag("remap", EmptyList);
+
+var outputPath = File.ReadAllText("config.txt");
+Console.WriteLine("passing output path as: " + outputPath);
 
 var bindgenBase = new rsp("base", 
 [
@@ -56,19 +57,19 @@ var sokol = new lib("sokol", [
         "./libs/sokol/src/sokol/sokol_app.h",
         "sapp_",
         "App",
-        "../Zinc.Core/src/generated/lib/sokol/Sokol.App.cs",
+        $"{outputPath}/src/generated/lib/sokol/Sokol.App.cs",
         rspInclude:sokol_settings),
     new ("sokol_audio", 
         "./libs/sokol/src/sokol/sokol_audio.h",
         "saudio_",
         "Audio",
-        "../Zinc.Core/src/generated/lib/sokol/Sokol.Audio.cs",
+        $"{outputPath}/src/generated/lib/sokol/Sokol.Audio.cs",
         rspInclude:sokol_settings),
     new ("sokol_color", 
         "./libs/sokol/bindgen/sokol_color_bindgen_helper.h",
         "sg_color_",
         "Color",
-        "../Zinc.Core/src/generated/lib/sokol/Sokol.Color.cs",
+        $"{outputPath}/src/generated/lib/sokol/Sokol.Color.cs",
         [
             traverse with { flagParams = ["./libs/sokol/src/sokol/util/sokol_color.h"]}
         ],
@@ -78,7 +79,7 @@ var sokol = new lib("sokol", [
         // "./libs/sokol/src/fontstash.h",
         "sfons_",
         "Fontstash",
-        "../Zinc.Core/src/generated/lib/sokol/Sokol.Fontstash.cs",
+        $"{outputPath}/src/generated/lib/sokol/Sokol.Fontstash.cs",
         [
             traverse with { flagParams = [
                 "./libs/sokol/fontstash.h",
@@ -93,7 +94,7 @@ var sokol = new lib("sokol", [
         "./libs/sokol/bindgen/sokol_debugtext_bindgen_helper.h",
         "sdtx_",
         "DebugText",
-        "../Zinc.Core/src/generated/lib/sokol/Sokol.DebugText.cs",
+        $"{outputPath}/src/generated/lib/sokol/Sokol.DebugText.cs",
         [
             traverse with { flagParams = ["./libs/sokol/src/sokol/util/sokol_debugtext.h"]}
         ],
@@ -102,13 +103,13 @@ var sokol = new lib("sokol", [
         "./libs/sokol/src/sokol/sokol_gfx.h",
         "sg_",
         "Gfx",
-        "../Zinc.Core/src/generated/lib/sokol/Sokol.Graphics.cs",
+        $"{outputPath}/src/generated/lib/sokol/Sokol.Graphics.cs",
         rspInclude:sokol_settings),
     new ("sokol_gfx_imgui", 
         "./libs/sokol/bindgen/sokol_gfx_imgui_bindgen_helper.h",
         "sg_imgui_",
         "GfxDebugGUI",
-        "../Zinc.Core/src/generated/lib/sokol/Sokol.Graphics.DebugGUI.cs",
+        $"{outputPath}/src/generated/lib/sokol/Sokol.Graphics.DebugGUI.cs",
         [
             traverse with { flagParams = ["./libs/sokol/src/sokol/util/sokol_gfx_imgui.h"]},
             remap with { flagParams = ["FILE*=@void*"]}
@@ -118,7 +119,7 @@ var sokol = new lib("sokol", [
         "./libs/sokol/bindgen/sokol_glue_bindgen_helper.h",
         "sg_",
         "Glue",
-        "../Zinc.Core/src/generated/lib/sokol/Sokol.Glue.cs",
+        $"{outputPath}/src/generated/lib/sokol/Sokol.Glue.cs",
         [
             traverse with { flagParams = ["./libs/sokol/src/sokol/sokol_glue.h"]}
         ],
@@ -127,7 +128,7 @@ var sokol = new lib("sokol", [
         "./libs/sokol/bindgen/sokol_gl_bindgen_helper.h",
         "sgl_",
         "GL",
-        "../Zinc.Core/src/generated/lib/sokol/Sokol.GL.cs",
+        $"{outputPath}/src/generated/lib/sokol/Sokol.GL.cs",
         [
             traverse with { flagParams = ["./libs/sokol/src/sokol/util/sokol_gl.h"]}
         ],
@@ -136,7 +137,7 @@ var sokol = new lib("sokol", [
         "./libs/sokol/bindgen/sokol_gp_bindgen_helper.h",
         "sgp_",
         "GP",
-        "../Zinc.Core/src/generated/lib/sokol/Sokol.GP.cs",
+        $"{outputPath}/src/generated/lib/sokol/Sokol.GP.cs",
         [
             traverse with { flagParams = ["./libs/sokol/src/sokol_gp/sokol_gp.h"]}
         ],
@@ -145,7 +146,7 @@ var sokol = new lib("sokol", [
         "./libs/sokol/bindgen/sokol_imgui_bindgen_helper.h",
         "simgui_",
         "ImGUI",
-        "../Zinc.Core/src/generated/lib/sokol/Sokol.ImGUI.cs",
+        $"{outputPath}/src/generated/lib/sokol/Sokol.ImGUI.cs",
         [
             traverse with { flagParams = [
                 "./libs/sokol/src/sokol/util/sokol_imgui.h",
@@ -162,13 +163,13 @@ var sokol = new lib("sokol", [
         "./libs/sokol/src/sokol/sokol_log.h",
         "",
         "Log",
-        "../Zinc.Core/src/generated/lib/sokol/Sokol.Log.cs",
+        $"{outputPath}/src/generated/lib/sokol/Sokol.Log.cs",
         rspInclude:sokol_settings),
     new ("sokol_time", 
         "./libs/sokol/src/sokol/sokol_time.h",
         "stm_",
         "Time",
-        "../Zinc.Core/src/generated/lib/sokol/Sokol.Time.cs",
+        $"{outputPath}/src/generated/lib/sokol/Sokol.Time.cs",
         rspInclude:sokol_settings),
 ]);
 
@@ -188,7 +189,7 @@ var stb = new lib("stb", [
         "./libs/stb/src/stb/stb_image.h",
         "",
         "STB",
-        "../Zinc.Core/src/generated/lib/stb/STB.Image.cs",
+        $"{outputPath}/src/generated/lib/stb/STB.Image.cs",
         [
             new("define-macro","STBI_NO_STDIO"),
         ],
@@ -206,10 +207,10 @@ var cute_settings = new rsp("cute_settings", rspInclude: bindgenBase, flags:
 ]);
 var cute = new lib("cute", [
     new ("c2", 
-        "./libs/cute/src/cute_headers/cute_c2.h",
+        "./libs/cute/bindgen/c2_bindgen_helper.h",
         "",
         "C2",
-        "../Zinc.Core/src/generated/lib/cute/Cute.C2.cs",
+        $"{outputPath}/src/generated/lib/cute/Cute.C2.cs",
         [
             new("traverse","./libs/cute/src/cute_headers/cute_c2.h"),
         ],
@@ -268,8 +269,8 @@ foreach (var l in buildLibs)
     //sokol:build - builds the lib
     //sokol:bindgen - binds all the libs
     //sokol:bindgen:libname - binds the specified lib
-    Target($"{l.libName}:build", () => Run(ZigExePath,$"build --build-file {buildpath(l.libName)}"));
-    Target($"{l.libName}:build:wasm", () => Run(ZigExePath,$"build -Dtarget=wasm32-emscripten --build-file {buildpath(l.libName)}"));
+    Target($"{l.libName}:build", () => Run(ZigExePath,$"build -Dfile-path={outputPath} --build-file {buildpath(l.libName)}"));
+    Target($"{l.libName}:build:wasm", () => Run(ZigExePath,$"build -Dfile-path={outputPath} -Dtarget=wasm32-emscripten --build-file {buildpath(l.libName)}"));
 
     var reqRsps = new List<string>();
     foreach (var rsp in l.bindgen)

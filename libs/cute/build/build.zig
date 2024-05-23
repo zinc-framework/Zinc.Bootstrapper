@@ -16,10 +16,10 @@ pub fn build(b: *std.Build) void {
         // Standard optimization options allow the person running `zig build` to select
         // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
         // set a preferred release mode, allowing the user to decide how to optimize.
-        .optimize = b.standardOptimizeOption(.{})
+        .optimize = b.standardOptimizeOption(.{}),
     });
     lib.linkLibC();
-    
+
     // const csources = [_][]const u8 {
     //     "stb.c"
     // };
@@ -27,20 +27,14 @@ pub fn build(b: *std.Build) void {
         .file = .{ .path = "cute.c" },
         .flags = &[_][]const u8{},
     });
-    
-    if (lib.target.isDarwin()) {
-        // b.lib_dir = "../../../../Zinc.Core/libs/osx-x64/native";
-        b.lib_dir = "../Zinc.Core/runtimes/osx-arm64/native";
-    } else {
-        if (lib.target.isLinux()) {
-            // b.lib_dir = "../../../../Zinc.Core/libs/linux-x64/native";
-            b.lib_dir = "../Zinc.Core/runtimes/linux-x64/native";
-        }
-        else if (lib.target.isWindows()) {
-            // b.lib_dir = "../../../../Zinc.Core/libs/win-x64/native";
-            b.lib_dir = "../Zinc.Core/runtimes/win-x64/native";
-        }
-    }
-    
+
+    const opts = b.addOptions();
+    const file_path = b.option([]const u8, "file-path", "Path to the file") orelse "./out";
+    opts.addOption([]const u8, "file-path", file_path);
+    b.lib_dir = std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ file_path, if (target.result.isWasm()) "/runtimes/wasi-wasm/native" else if (target.result.isDarwin()) "/runtimes/osx-arm64/native" else if (lib.rootModuleTarget().os.tag == .linux) "/runtimes/linux-x64/native" else if (lib.rootModuleTarget().os.tag == .windows) "/runtimes/win-x64/native" else "/runtimes/unknown/native" }) catch |err| {
+        std.debug.print("Failed to concatenate strings: {}\n", .{err});
+        return;
+    };
+
     b.installArtifact(lib);
 }
