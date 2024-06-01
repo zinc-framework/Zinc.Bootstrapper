@@ -45,7 +45,7 @@ var bindgenBase = new rsp("base",
     [
         "latest-codegen",
         "single-file",
-        // "exclude-funcs-with-body",
+        "exclude-funcs-with-body",
         "generate-aggressive-inlining",
         // "generate-file-scoped-namespaces",
         "log-exclusions",
