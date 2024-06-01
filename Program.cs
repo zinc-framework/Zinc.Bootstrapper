@@ -14,6 +14,31 @@ flag remap = new flag("remap", EmptyList);
 var outputPath = File.ReadAllText("config.txt");
 Console.WriteLine("passing output path as: " + outputPath);
 
+//platform include paths for bindgen
+//win
+//https://developercommunity.visualstudio.com/t/msvc-2022-preview-2-143030401-missing-stddefh-and/1477719
+//https://www.reddit.com/r/VisualStudio/comments/sd8w5f/some_c_headers_dont_come_with_visual_studio_tools/
+List<string> windows = ["C:/Program Files (x86)/Windows Kits/10/Include/10.0.22621.0/ucrt"];
+
+//macos
+List<string> macos = [
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include", 
+    "/Library/Developer/CommandLineTools/usr/lib/clang/13.0.0/include/"
+];
+
+//linux?
+List<string> linux = [];
+
+//assing current platform to var
+var platformDefines = RuntimeInformation.RuntimeIdentifier switch
+{
+    "win-x64" => windows,
+    "osx-arm64" => macos,
+    "osx-x64" => macos,
+    "linux-x64" => linux,
+    _ => EmptyList
+};
+
 var bindgenBase = new rsp("base", 
 [
     new ("config",
@@ -38,8 +63,7 @@ var bindgenBase = new rsp("base",
 var sokol_settings = new rsp("sokol_settings", rspInclude: bindgenBase, flags:
 [
     new("include-directory", [
-        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include",
-        "/Library/Developer/CommandLineTools/usr/lib/clang/13.0.0/include/",
+        ..platformDefines,
         "./libs/sokol/src/sokol",
         "./libs/sokol/src/"
     ]),
@@ -155,7 +179,7 @@ var sokol = new lib("sokol", [
             remap with { flagParams = [
                 "FILE*=@void*",
                 "__sFILE*=@void*",
-                "__arglist=@params string[] args"
+                // "__arglist=@params string[] args" //NOTE: this broke in ClangSharpPInvokeGenerator 18.1.0 and issue filed - need to manually remap the types
             ]}
         ],
         rspInclude:sokol_settings),
@@ -177,8 +201,7 @@ var stb_settings = new rsp("stb_settings", rspInclude: bindgenBase, flags:
 [
     new("include-directory",
     [
-        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include",
-        "/Library/Developer/CommandLineTools/usr/lib/clang/13.0.0/include/",
+        ..platformDefines,
         "./libs/stb/src/stb"
     ]),
     new("namespace", "Zinc.Internal.STB"),
@@ -199,7 +222,7 @@ var stb = new lib("stb", [
 var cute_settings = new rsp("cute_settings", rspInclude: bindgenBase, flags:
 [
     new("include-directory", [
-        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include",
+        ..platformDefines,
         "./libs/cute/src/cute_headers"
     ]),
     new("namespace", "Zinc.Internal.Cute"),

@@ -19,3 +19,10 @@ Generally there are four options:
 2. Specific bindgen (./build [sokol|cute|stb]:bindgen:[filename])
 
 See all the options by running `./build --help`
+
+
+## Bindings
+
+Bindings require that your running platform have Visual Studio (or Build Tools for Visual Studio 2022 - select "Desktop Development with C++") installed or Xcode
+
+https://visualstudio.microsoft.com/downloads/#remote-tools-for-visual-studio-2022 (bottom sctoll for "Visual C++ Redistributable for Visual Studio 2022)
