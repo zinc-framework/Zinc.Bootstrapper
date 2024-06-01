@@ -26,3 +26,9 @@ See all the options by running `./build --help`
 Bindings require that your running platform have Visual Studio (or Build Tools for Visual Studio 2022 - select "Desktop Development with C++") installed or Xcode
 
 https://visualstudio.microsoft.com/downloads/#remote-tools-for-visual-studio-2022 (bottom sctoll for "Visual C++ Redistributable for Visual Studio 2022)
+
+NOTE: IMGUI bindings are a little wonky and need to be manually updated
+See the "Fix Imgui" commit in the bindings repo to see what needs to change
+* _iobuf needs to map to void*
+* __arglist needs to map to params string[] args
+* the bitfield logic needs to map to proper ints 
