@@ -47,7 +47,7 @@ var bindgenBase = new rsp("base",
         "single-file",
         // "exclude-funcs-with-body",
         "generate-aggressive-inlining",
-        "generate-file-scoped-namespaces",
+        // "generate-file-scoped-namespaces",
         "log-exclusions",
         "log-potential-typedef-remappings",
         "log-visited-files",
@@ -81,19 +81,19 @@ var sokol = new lib("sokol", [
         "./libs/sokol/src/sokol/sokol_app.h",
         "sapp_",
         "App",
-        $"{outputPath}/src/generated/lib/sokol/Sokol.App.cs",
+        $"{outputPath}/bindings/sokol/Sokol.App.cs",
         rspInclude:sokol_settings),
     new ("sokol_audio", 
         "./libs/sokol/src/sokol/sokol_audio.h",
         "saudio_",
         "Audio",
-        $"{outputPath}/src/generated/lib/sokol/Sokol.Audio.cs",
+        $"{outputPath}/bindings/sokol/Sokol.Audio.cs",
         rspInclude:sokol_settings),
     new ("sokol_color", 
         "./libs/sokol/bindgen/sokol_color_bindgen_helper.h",
         "sg_color_",
         "Color",
-        $"{outputPath}/src/generated/lib/sokol/Sokol.Color.cs",
+        $"{outputPath}/bindings/sokol/Sokol.Color.cs",
         [
             traverse with { flagParams = ["./libs/sokol/src/sokol/util/sokol_color.h"]}
         ],
@@ -103,7 +103,7 @@ var sokol = new lib("sokol", [
         // "./libs/sokol/src/fontstash.h",
         "sfons_",
         "Fontstash",
-        $"{outputPath}/src/generated/lib/sokol/Sokol.Fontstash.cs",
+        $"{outputPath}/bindings/sokol/Sokol.Fontstash.cs",
         [
             traverse with { flagParams = [
                 "./libs/sokol/fontstash.h",
@@ -118,7 +118,7 @@ var sokol = new lib("sokol", [
         "./libs/sokol/bindgen/sokol_debugtext_bindgen_helper.h",
         "sdtx_",
         "DebugText",
-        $"{outputPath}/src/generated/lib/sokol/Sokol.DebugText.cs",
+        $"{outputPath}/bindings/sokol/Sokol.DebugText.cs",
         [
             traverse with { flagParams = ["./libs/sokol/src/sokol/util/sokol_debugtext.h"]}
         ],
@@ -127,13 +127,13 @@ var sokol = new lib("sokol", [
         "./libs/sokol/src/sokol/sokol_gfx.h",
         "sg_",
         "Gfx",
-        $"{outputPath}/src/generated/lib/sokol/Sokol.Graphics.cs",
+        $"{outputPath}/bindings/sokol/Sokol.Graphics.cs",
         rspInclude:sokol_settings),
     new ("sokol_gfx_imgui", 
         "./libs/sokol/bindgen/sokol_gfx_imgui_bindgen_helper.h",
         "sg_imgui_",
         "GfxDebugGUI",
-        $"{outputPath}/src/generated/lib/sokol/Sokol.Graphics.DebugGUI.cs",
+        $"{outputPath}/bindings/sokol/Sokol.Graphics.DebugGUI.cs",
         [
             traverse with { flagParams = ["./libs/sokol/src/sokol/util/sokol_gfx_imgui.h"]},
             remap with { flagParams = ["FILE*=@void*"]}
@@ -143,7 +143,7 @@ var sokol = new lib("sokol", [
         "./libs/sokol/bindgen/sokol_glue_bindgen_helper.h",
         "sg_",
         "Glue",
-        $"{outputPath}/src/generated/lib/sokol/Sokol.Glue.cs",
+        $"{outputPath}/bindings/sokol/Sokol.Glue.cs",
         [
             traverse with { flagParams = ["./libs/sokol/src/sokol/sokol_glue.h"]}
         ],
@@ -152,7 +152,7 @@ var sokol = new lib("sokol", [
         "./libs/sokol/bindgen/sokol_gl_bindgen_helper.h",
         "sgl_",
         "GL",
-        $"{outputPath}/src/generated/lib/sokol/Sokol.GL.cs",
+        $"{outputPath}/bindings/sokol/Sokol.GL.cs",
         [
             traverse with { flagParams = ["./libs/sokol/src/sokol/util/sokol_gl.h"]}
         ],
@@ -161,7 +161,7 @@ var sokol = new lib("sokol", [
         "./libs/sokol/bindgen/sokol_gp_bindgen_helper.h",
         "sgp_",
         "GP",
-        $"{outputPath}/src/generated/lib/sokol/Sokol.GP.cs",
+        $"{outputPath}/bindings/sokol/Sokol.GP.cs",
         [
             traverse with { flagParams = ["./libs/sokol/src/sokol_gp/sokol_gp.h"]}
         ],
@@ -170,7 +170,7 @@ var sokol = new lib("sokol", [
         "./libs/sokol/bindgen/sokol_imgui_bindgen_helper.h",
         "simgui_",
         "ImGUI",
-        $"{outputPath}/src/generated/lib/sokol/Sokol.ImGUI.cs",
+        $"{outputPath}/bindings/sokol/Sokol.ImGUI.cs",
         [
             traverse with { flagParams = [
                 "./libs/sokol/src/sokol/util/sokol_imgui.h",
@@ -187,13 +187,13 @@ var sokol = new lib("sokol", [
         "./libs/sokol/src/sokol/sokol_log.h",
         "",
         "Log",
-        $"{outputPath}/src/generated/lib/sokol/Sokol.Log.cs",
+        $"{outputPath}/bindings/sokol/Sokol.Log.cs",
         rspInclude:sokol_settings),
     new ("sokol_time", 
         "./libs/sokol/src/sokol/sokol_time.h",
         "stm_",
         "Time",
-        $"{outputPath}/src/generated/lib/sokol/Sokol.Time.cs",
+        $"{outputPath}/bindings/sokol/Sokol.Time.cs",
         rspInclude:sokol_settings),
 ]);
 
@@ -212,7 +212,7 @@ var stb = new lib("stb", [
         "./libs/stb/src/stb/stb_image.h",
         "",
         "STB",
-        $"{outputPath}/src/generated/lib/stb/STB.Image.cs",
+        $"{outputPath}/bindings/stb/STB.Image.cs",
         [
             new("define-macro","STBI_NO_STDIO"),
         ],
@@ -233,7 +233,7 @@ var cute = new lib("cute", [
         "./libs/cute/bindgen/c2_bindgen_helper.h",
         "",
         "C2",
-        $"{outputPath}/src/generated/lib/cute/Cute.C2.cs",
+        $"{outputPath}/bindings/cute/Cute.C2.cs",
         [
             new("traverse","./libs/cute/src/cute_headers/cute_c2.h"),
         ],

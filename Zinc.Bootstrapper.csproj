@@ -21,4 +21,11 @@
       <WriteLinesToFile File="$(IntermediateOutputPath)properties.env" Lines="ZigToolsetPath=$(ZigToolsetPath);ZigExePath=$(ZigExePath);ZigLibPath=$(ZigLibPath);ZigDocPath=$(ZigDocPath)" Overwrite="true" />
   </Target>
 
+  <ItemGroup>
+    <Content Remove="out\**" />
+    <Compile Remove="out\**" />
+    <EmbeddedResource Remove="out\**" />
+    <None Remove="out\**" />
+  </ItemGroup>
+
 </Project>

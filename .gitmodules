@@ -13,3 +13,9 @@
 [submodule "cimgui"]
 	path = libs/cimgui/src/cimgui
 	url = https://github.com/cimgui/cimgui
+[submodule "out/bindings"]
+	path = out/bindings
+	url = https://github.com/zinc-framework/Zinc.Bindings
+[submodule "out/libs"]
+	path = out/libs
+	url = https://github.com/zinc-framework/Zinc.Libs
