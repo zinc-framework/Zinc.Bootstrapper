@@ -235,16 +235,38 @@ var cute = new lib("cute", [
         "C2",
         $"{outputPath}/bindings/cute/Cute.C2.cs",
         [
-            new("traverse","./libs/cute/src/cute_headers/cute_c2.h"),
+            traverse with { flagParams = ["./libs/cute/src/cute_headers/cute_c2.h"]}
         ],
         rspInclude:cute_settings),
+]);
+
+var box2d_settings = new rsp("box2d_settings", rspInclude: bindgenBase, flags:
+[
+    new("include-directory", [
+        ..platformDefines,
+        "./libs/box2d/src/box2d/include/box2d"
+    ]),
+    new("define-macro", [
+        "BOX2D_DLL",
+    ]),
+    new("namespace", "Zinc.Internal.Box2D"),
+    new("libraryPath", "box2d")
+]);
+var box2d = new lib("box2d", [
+    new ("box2d", 
+        "./libs/box2d/src/box2d/include/box2d/box2d.h",
+        "",
+        "Box2D",
+        $"{outputPath}/bindings/box2d/Box2D.cs",
+        rspInclude:box2d_settings),
 ]);
     
 
 List<lib> buildLibs = [
     sokol,
     stb,
-    cute
+    cute,
+    box2d
 ];
 
 var projectDir = Directory.GetCurrentDirectory();
