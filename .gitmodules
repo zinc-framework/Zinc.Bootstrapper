@@ -19,3 +19,6 @@
 [submodule "out/libs"]
 	path = out/libs
 	url = https://github.com/zinc-framework/Zinc.Libs
+[submodule "box2d"]
+	path = libs/box2d/src/box2d
+	url = https://github.com/erincatto/box2d.git
