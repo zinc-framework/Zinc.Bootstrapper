@@ -246,18 +246,21 @@ var box2d_settings = new rsp("box2d_settings", rspInclude: bindgenBase, flags:
         ..platformDefines,
         "./libs/box2d/src/box2d/include/box2d"
     ]),
-    new("define-macro", [
-        "BOX2D_DLL",
-    ]),
     new("namespace", "Zinc.Internal.Box2D"),
     new("libraryPath", "box2d")
 ]);
 var box2d = new lib("box2d", [
     new ("box2d", 
-        "./libs/box2d/src/box2d/include/box2d/box2d.h",
+        "./libs/box2d/bindgen/box2d_bindgen_helper.h",
         "",
         "Box2D",
         $"{outputPath}/bindings/box2d/Box2D.cs",
+        [
+            traverse with { flagParams = [
+                "./libs/box2d/src/box2d/include/box2d/box2d.h",
+                "./libs/box2d/src/box2d/include/box2d/types.h",
+            ]}
+        ],
         rspInclude:box2d_settings),
 ]);
     
