@@ -99,14 +99,13 @@ var sokol = new lib("sokol", [
         ],
         rspInclude:sokol_settings),
     new ("sokol_fontstash", 
-        "./libs/sokol/bindgen/sokol_fontstash_bindgen_helper.c",
-        // "./libs/sokol/src/fontstash.h",
+        "./libs/sokol/bindgen/sokol_fontstash_bindgen_helper.h",
         "sfons_",
         "Fontstash",
         $"{outputPath}/bindings/sokol/Sokol.Fontstash.cs",
         [
             traverse with { flagParams = [
-                "./libs/sokol/fontstash.h",
+                "./libs/sokol/src/fontstash.h",
                 "./libs/sokol/src/sokol/util/sokol_fontstash.h",
             ]},
             remap with { flagParams = [
