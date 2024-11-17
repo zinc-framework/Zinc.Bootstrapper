@@ -258,7 +258,11 @@ var box2d = new lib("box2d", [
         [
             traverse with { flagParams = [
                 "./libs/box2d/src/box2d/include/box2d/box2d.h",
+                "./libs/box2d/src/box2d/include/box2d/base.h",
                 "./libs/box2d/src/box2d/include/box2d/types.h",
+                "./libs/box2d/src/box2d/include/box2d/math_functions.h",
+                "./libs/box2d/src/box2d/include/box2d/id.h",
+                "./libs/box2d/src/box2d/include/box2d/collision.h",
             ]}
         ],
         rspInclude:box2d_settings),
