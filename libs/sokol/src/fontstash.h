@@ -112,6 +112,7 @@ FONS_DEF int fonsExpandAtlas(FONScontext* s, int width, int height);
 FONS_DEF int fonsResetAtlas(FONScontext* stash, int width, int height);
 
 // Add fonts
+FONS_DEF int fonsAddFontMem(FONScontext* stash, const char* name, unsigned char* data, int dataSize, int freeData); //added by zinc to expose for bindgen
 FONS_DEF int fonsGetFontByName(FONScontext* s, const char* name);
 FONS_DEF int fonsAddFallbackFont(FONScontext* stash, int base, int fallback);
 
@@ -890,7 +891,7 @@ error:
 	return FONS_INVALID;
 }
 
-int fonsAddFontMem(FONScontext* stash, const char* name, unsigned char* data, int dataSize, int freeData)
+FONS_DEF int fonsAddFontMem(FONScontext* stash, const char* name, unsigned char* data, int dataSize, int freeData)
 {
 	int i, ascent, descent, fh, lineGap;
 	FONSfont* font;
