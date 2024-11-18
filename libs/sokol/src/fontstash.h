@@ -28,8 +28,8 @@ extern "C" {
 #ifdef FONS_STATIC
 	#define FONS_DEF static
 #else
-	#ifdef defined(_WIN32) || defined __CYGWIN__
-		#define FONS_DEF extern "C" __declspec(dllexport)
+	#if defined(_WIN32) || defined(__CYGWIN__)
+		#define FONS_DEF __declspec(dllexport)
 	#else
 		#define FONS_DEF extern
 	#endif
@@ -891,7 +891,7 @@ error:
 	return FONS_INVALID;
 }
 
-FONS_DEF int fonsAddFontMem(FONScontext* stash, const char* name, unsigned char* data, int dataSize, int freeData)
+int fonsAddFontMem(FONScontext* stash, const char* name, unsigned char* data, int dataSize, int freeData)
 {
 	int i, ascent, descent, fh, lineGap;
 	FONSfont* font;
