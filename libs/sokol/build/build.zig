@@ -119,6 +119,9 @@ pub fn buildLibSokol(b: *Build, lib: *Step.Compile, options: LibSokolOptions) !v
         }
         // add the Emscripten system include seach path
         const emsdk_sysroot = b.pathJoin(&.{ emSdkPath(b, options.emsdk.?), "upstream", "emscripten", "cache", "sysroot" });
+        //log the emsdk_sysroot:
+        std.debug.print("emsdk_sysroot: {c}\n", .{emsdk_sysroot});
+
         const include_path = b.pathJoin(&.{ emsdk_sysroot, "include" });
         lib.addSystemIncludePath(.{ .path = include_path });
     }
@@ -256,6 +259,8 @@ fn emSdkSetupStep(b: *Build, emsdk: *Build.Dependency) !?*Build.Step.Run {
     const dot_emsc_path = b.pathJoin(&.{ emsdk_path, ".emscripten" });
     const dot_emsc_exists = !std.meta.isError(std.fs.accessAbsolute(dot_emsc_path, .{}));
     if (!dot_emsc_exists) {
+        // std.debug.print("emsdk_sysroot: {c}\n", .{emsdk_sysroot});
+        std.debug.print("setting up emsdk\n", .{});
         var cmd = std.ArrayList([]const u8).init(b.allocator);
         defer cmd.deinit();
         if (builtin.os.tag == .windows)
@@ -265,9 +270,11 @@ fn emSdkSetupStep(b: *Build, emsdk: *Build.Dependency) !?*Build.Step.Run {
             try cmd.append(b.pathJoin(&.{ emsdk_path, "emsdk" }));
         }
         const emsdk_install = b.addSystemCommand(cmd.items);
-        emsdk_install.addArgs(&.{ "install", "latest" });
+        // emsdk_install.addArgs(&.{ "install", "latest" });
+        emsdk_install.addArgs(&.{ "install", "3.1.56" });
         const emsdk_activate = b.addSystemCommand(cmd.items);
-        emsdk_activate.addArgs(&.{ "activate", "latest" });
+        // emsdk_activate.addArgs(&.{ "activate", "latest" });
+        emsdk_activate.addArgs(&.{ "activate", "3.1.56" });
         emsdk_activate.step.dependOn(&emsdk_install.step);
         return emsdk_activate;
     } else {
