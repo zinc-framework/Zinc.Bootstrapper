@@ -70,8 +70,8 @@ pub fn build(b: *Build) !void {
             .optimize = optimize,
             .link_libc = true,
         });
-        // lib.linkLibCpp(); bad that maybe cant do this?
-        // lib.linkLibC();
+        lib.linkLibCpp(); //bad that maybe cant do this?
+        lib.linkLibC();
 
         try buildLibSokol(b, lib, .{
             .target = target,
@@ -100,7 +100,7 @@ pub fn buildLibSokol(b: *Build, lib: *Step.Compile, options: LibSokolOptions) !v
     const opts = b.addOptions();
     const file_path = b.option([]const u8, "file-path", "Path to the file") orelse "./out";
     opts.addOption([]const u8, "file-path", file_path);
-    b.lib_dir = std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ file_path, if (options.target.result.isWasm()) "/libs/runtimes/wasi-wasm/native" else if (options.target.result.isDarwin()) "/libs/runtimes/osx-arm64/native" else if (lib.rootModuleTarget().os.tag == .linux) "/libs/runtimes/linux-x64/native" else if (lib.rootModuleTarget().os.tag == .windows) "/libs/runtimes/win-x64/native" else "/libs/runtimes/unknown/native" }) catch |err| {
+    b.lib_dir = std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ file_path, if (options.target.result.isWasm()) "/libs/runtimes/browser-wasm/native" else if (options.target.result.isDarwin()) "/libs/runtimes/osx-arm64/native" else if (lib.rootModuleTarget().os.tag == .linux) "/libs/runtimes/linux-x64/native" else if (lib.rootModuleTarget().os.tag == .windows) "/libs/runtimes/win-x64/native" else "/libs/runtimes/unknown/native" }) catch |err| {
         std.debug.print("Failed to concatenate strings: {}\n", .{err});
         return;
     };
@@ -216,18 +216,6 @@ pub fn buildLibSokol(b: *Build, lib: *Step.Compile, options: LibSokolOptions) !v
     };
 
     const c_sources = [_][]const u8{"sokol.c"};
-
-    // lib.addCSourceFiles(.{
-    //     // .root = csrc_root,
-    //     .files = c_sources,
-    //     .flags = cflags,
-    // });
-
-    // lib.addCSourceFiles(.{
-    //     // .root = csrc_root,
-    //     .files = cpp_sources,
-    //     .flags = cppflags,
-    // });
 
     inline for (c_sources) |csrc| {
         lib.addCSourceFile(.{
