@@ -32,3 +32,14 @@ See the "Fix Imgui" commit in the bindings repo to see what needs to change
 * _iobuf needs to map to void*
 * __arglist needs to map to params string[] args
 * the bitfield logic needs to map to proper ints 
+
+## DLL vs. Static
+Most everything just works for now but you need to change some defines stuff for now in the c file (just sokol for now, others not supported for static yet)
+in `sokol.c`
+### DLL
+make sure `#define SOKOL_DLL` is uncommented
+comment out `#define IMGUI_STATIC`
+### Static
+comment out `#define SOKOL_DLL`
+make sure `#define IMGUI_STATIC` is uncommented
+also add in `int __stack_chk_guard = 42;` for now until I fix stack check guard stuff

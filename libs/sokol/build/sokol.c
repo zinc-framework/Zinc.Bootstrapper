@@ -1,12 +1,14 @@
 #define SOKOL_IMPL
-#define SOKOL_DLL
+// #define SOKOL_DLL
 #define SOKOL_NO_ENTRY
 #define SOKOL_TRACE_HOOKS
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #define FONTSTASH_IMPLEMENTATION
+
+int __stack_chk_guard = 42;
+#define IMGUI_STATIC
 // #define STB_TRUETYPE_IMPLEMENTATION
 // #define STATIC
-// #define IMGUI_STATIC
 // #define IMGUI_STATIC=yes
 // #define SOKOL_DEBUG
 
