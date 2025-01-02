@@ -12,3 +12,4 @@ riderModule.iml
 /libs/cute/build/zig-cache/
 
 .DS_Store
+libs/sokol/build/.zig-cache/

@@ -1,15 +1,24 @@
 #define SOKOL_IMPL
-// #define SOKOL_DLL
 #define SOKOL_NO_ENTRY
 #define SOKOL_TRACE_HOOKS
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #define FONTSTASH_IMPLEMENTATION
 
-int __stack_chk_guard = 42;
-#define IMGUI_STATIC
+// comment these out to configure build option for sokol
+#define DLL_BUILD
+// #define STATIC_BUILD
+
+#if defined(DLL_BUILD)
+    #define SOKOL_DLL
+#endif
+
+#if defined(STATIC_BUILD)
+    int __stack_chk_guard = 42;
+    #define IMGUI_STATIC
+#endif
+
 // #define STB_TRUETYPE_IMPLEMENTATION
 // #define STATIC
-// #define IMGUI_STATIC=yes
 // #define SOKOL_DEBUG
 
 // #define USE_SOKOL_APP dont need this anymore says floooh - if it breaks uncomment i guess
