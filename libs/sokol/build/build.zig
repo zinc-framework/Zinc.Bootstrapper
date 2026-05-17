@@ -131,7 +131,7 @@ pub fn buildLibSokol(b: *Build, lib: *Step.Compile, options: LibSokolOptions) !v
     const backend_cflags = switch (backend) {
         .d3d11 => "-DSOKOL_D3D11",
         .metal => "-DSOKOL_METAL",
-        .gl => "-DSOKOL_GLCORE33",
+        .gl => "-DSOKOL_GLCORE",
         .gles3 => "-DSOKOL_GLES3",
         .wgpu => "-DSOKOL_WGPU",
         else => @panic("unknown sokol backend"),
@@ -205,14 +205,14 @@ pub fn buildLibSokol(b: *Build, lib: *Step.Compile, options: LibSokolOptions) !v
         }
     }
 
+    // dcimgui sources (docking branch).
     const cpp_sources = [_][]const u8{
-        "imgui.cpp",
-        "../../cimgui/src/cimgui/cimgui.cpp",
-        "../../cimgui/src/cimgui/imgui/imgui.cpp",
-        "../../cimgui/src/cimgui/imgui/imgui_demo.cpp",
-        "../../cimgui/src/cimgui/imgui/imgui_draw.cpp",
-        "../../cimgui/src/cimgui/imgui/imgui_tables.cpp",
-        "../../cimgui/src/cimgui/imgui/imgui_widgets.cpp",
+        "../../dcimgui/src/dcimgui/src-docking/cimgui.cpp",
+        "../../dcimgui/src/dcimgui/src-docking/imgui.cpp",
+        "../../dcimgui/src/dcimgui/src-docking/imgui_demo.cpp",
+        "../../dcimgui/src/dcimgui/src-docking/imgui_draw.cpp",
+        "../../dcimgui/src/dcimgui/src-docking/imgui_tables.cpp",
+        "../../dcimgui/src/dcimgui/src-docking/imgui_widgets.cpp",
     };
 
     const c_sources = [_][]const u8{"sokol.c"};

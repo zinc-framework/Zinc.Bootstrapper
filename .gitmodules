@@ -4,15 +4,9 @@
 [submodule "sokol"]
 	path = libs/sokol/src/sokol
 	url = https://github.com/floooh/sokol
-[submodule "cute_headers"]
-	path = libs/cute/src/cute_headers
-	url = https://github.com/RandyGaul/cute_headers.git
 [submodule "sokol_gp"]
 	path = libs/sokol/src/sokol_gp
 	url = https://github.com/edubart/sokol_gp.git
-[submodule "cimgui"]
-	path = libs/cimgui/src/cimgui
-	url = https://github.com/cimgui/cimgui
 [submodule "out/bindings"]
 	path = out/bindings
 	url = https://github.com/zinc-framework/Zinc.Bindings
@@ -22,3 +16,6 @@
 [submodule "box2d"]
 	path = libs/box2d/src/box2d
 	url = https://github.com/erincatto/box2d.git
+[submodule "libs/dcimgui/src/dcimgui"]
+	path = libs/dcimgui/src/dcimgui
+	url = https://github.com/floooh/dcimgui.git

@@ -65,7 +65,8 @@ var sokol_settings = new rsp("sokol_settings", rspInclude: bindgenBase, flags:
     new("include-directory", [
         ..platformDefines,
         "./libs/sokol/src/sokol",
-        "./libs/sokol/src/"
+        "./libs/sokol/src/",
+        "./libs/dcimgui/src/dcimgui/src-docking"
     ]),
     new("define-macro", [
         "SOKOL_DLL",
@@ -173,7 +174,7 @@ var sokol = new lib("sokol", [
         [
             traverse with { flagParams = [
                 "./libs/sokol/src/sokol/util/sokol_imgui.h",
-                "./libs/cimgui/src/cimgui/cimgui.h"
+                "./libs/dcimgui/src/dcimgui/src-docking/cimgui.h"
             ]},
             remap with { flagParams = [
                 "FILE*=@void*",
@@ -218,27 +219,6 @@ var stb = new lib("stb", [
         rspInclude:stb_settings),
 ]);
 
-var cute_settings = new rsp("cute_settings", rspInclude: bindgenBase, flags:
-[
-    new("include-directory", [
-        ..platformDefines,
-        "./libs/cute/src/cute_headers"
-    ]),
-    new("namespace", "Zinc.Internal.Cute"),
-    new("libraryPath", "cute")
-]);
-var cute = new lib("cute", [
-    new ("c2", 
-        "./libs/cute/bindgen/c2_bindgen_helper.h",
-        "",
-        "C2",
-        $"{outputPath}/bindings/cute/Cute.C2.cs",
-        [
-            traverse with { flagParams = ["./libs/cute/src/cute_headers/cute_c2.h"]}
-        ],
-        rspInclude:cute_settings),
-]);
-
 var box2d_settings = new rsp("box2d_settings", rspInclude: bindgenBase, flags:
 [
     new("include-directory", [
@@ -271,7 +251,6 @@ var box2d = new lib("box2d", [
 List<lib> buildLibs = [
     sokol,
     stb,
-    cute,
     box2d
 ];
 

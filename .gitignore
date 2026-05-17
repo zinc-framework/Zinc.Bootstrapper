@@ -9,7 +9,11 @@ riderModule.iml
 
 /libs/sokol/build/code
 
-/libs/cute/build/zig-cache/
+/libs/box2d/build/zig-cache/
+/libs/box2d/build/zig-out/
+/libs/box2d/build/.zig-cache/
+/libs/stb/build/zig-out/
+/libs/sokol/build/zig-out/
 
 .DS_Store
 libs/sokol/build/.zig-cache/

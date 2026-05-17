@@ -34,12 +34,13 @@ See the "Fix Imgui" commit in the bindings repo to see what needs to change
 * the bitfield logic needs to map to proper ints 
 
 ## DLL vs. Static
-Most everything just works for now but you need to change some defines stuff for now in the c file (just sokol for now, others not supported for static yet)
-in `sokol.c`
-### DLL
-make sure `#define SOKOL_DLL` is uncommented
-comment out `#define IMGUI_STATIC`
-### Static
-comment out `#define SOKOL_DLL`
-make sure `#define IMGUI_STATIC` is uncommented
-also add in `int __stack_chk_guard = 42;` for now until I fix stack check guard stuff
+Switch between dynamic and static builds in `libs/sokol/build/sokol.c` by toggling
+the `DLL_BUILD` / `STATIC_BUILD` defines at the top of the file. `DLL_BUILD`
+enables `SOKOL_DLL`; `STATIC_BUILD` injects the `__stack_chk_guard` shim until
+that workaround is no longer needed.
+
+## ImGui
+We consume [floooh/dcimgui](https://github.com/floooh/dcimgui) (docking variant)
+directly — this provides Dear ImGui + the dear_bindings-generated C API with the
+`ig` prefix that sokol_imgui.h expects by default. The previous hand-rolled
+cimgui submodule and `imgui.cpp` stub have been removed.
