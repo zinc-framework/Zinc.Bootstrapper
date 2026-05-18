@@ -351,6 +351,32 @@ foreach (var l in buildLibs)
     Target($"{l.libName}", DependsOn($"{l.libName}:build", $"{l.libName}:bindgen"));
 }
 
+// sokol-shdc — pre-built shader compiler that ships with sokol-tools-bin.
+// Used by sokol_gp's shader regen and exposed for Zinc consumers who want to
+// compile their own .glsl into multi-backend shader blobs.
+var shdcRid = RuntimeInformation.RuntimeIdentifier switch
+{
+    "win-x64"   => "win32",
+    "osx-arm64" => "osx_arm64",
+    "osx-x64"   => "osx",
+    "linux-x64" => "linux",
+    "linux-arm64" => "linux_arm64",
+    _ => "osx_arm64"
+};
+var shdcExe = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "sokol-shdc.exe" : "sokol-shdc";
+var shdcPath = Path.Combine(projectDir, "libs/sokol-tools/src/sokol-tools-bin/bin", shdcRid, shdcExe);
+
+Target("shdc:path", () => Console.WriteLine(shdcPath));
+Target("shdc", () =>
+{
+    // forward any trailing args after `--` to shdc; otherwise show help.
+    var dashIdx = Array.IndexOf(args, "--");
+    var shdcArgs = dashIdx >= 0 && dashIdx + 1 < args.Length
+        ? string.Join(" ", args.Skip(dashIdx + 1))
+        : "--help";
+    Run(shdcPath, shdcArgs);
+});
+
 Target("echo", () => Console.WriteLine("echo"));
 Target("default", DependsOn(buildLibs.Select(x => x.libName).ToArray()));
 

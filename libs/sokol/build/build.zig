@@ -205,9 +205,11 @@ pub fn buildLibSokol(b: *Build, lib: *Step.Compile, options: LibSokolOptions) !v
         }
     }
 
-    // dcimgui sources (docking branch).
+    // dcimgui sources (docking branch). v1.92+ split out cimgui_internal.cpp/h
+    // which provides internal symbols sokol_imgui's font-atlas path can pull in.
     const cpp_sources = [_][]const u8{
         "../../dcimgui/src/dcimgui/src-docking/cimgui.cpp",
+        "../../dcimgui/src/dcimgui/src-docking/cimgui_internal.cpp",
         "../../dcimgui/src/dcimgui/src-docking/imgui.cpp",
         "../../dcimgui/src/dcimgui/src-docking/imgui_demo.cpp",
         "../../dcimgui/src/dcimgui/src-docking/imgui_draw.cpp",

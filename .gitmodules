@@ -6,7 +6,8 @@
 	url = https://github.com/floooh/sokol
 [submodule "sokol_gp"]
 	path = libs/sokol/src/sokol_gp
-	url = https://github.com/edubart/sokol_gp.git
+	url = https://github.com/zinc-framework/sokol_gp.git
+	branch = sokol-view-objects
 [submodule "out/bindings"]
 	path = out/bindings
 	url = https://github.com/zinc-framework/Zinc.Bindings
@@ -19,3 +20,6 @@
 [submodule "libs/dcimgui/src/dcimgui"]
 	path = libs/dcimgui/src/dcimgui
 	url = https://github.com/floooh/dcimgui.git
+[submodule "libs/sokol-tools/src/sokol-tools-bin"]
+	path = libs/sokol-tools/src/sokol-tools-bin
+	url = https://github.com/floooh/sokol-tools-bin.git
