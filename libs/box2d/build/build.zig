@@ -1,11 +1,9 @@
 const std = @import("std");
-const builtin = @import("builtin");
 const Build = std.Build;
 
 // box2d v3 — pure C library with a stable C ABI. Compiles every .c in src/box2d/src.
-// API export macro: BOX2D_EXPORT is enabled via `box2d_EXPORTS` (MSVC) or the
-// __attribute__((visibility("default"))) path on Clang/GCC. We define
-// `box2d_EXPORTS` unconditionally for the DLL build to match CMake's behavior.
+// API export macro: BOX2D_EXPORT is wired via the box2d_EXPORTS define on MSVC,
+// or __attribute__((visibility("default"))) on Clang/GCC.
 
 const box2d_sources = [_][]const u8{
     "../src/box2d/src/aabb.c",
@@ -48,47 +46,43 @@ const box2d_sources = [_][]const u8{
 pub fn build(b: *Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const file_path = b.option([]const u8, "file-path", "Output root for installed artifacts") orelse "./out";
 
-    const lib = b.addSharedLibrary(.{
-        .name = "box2d",
+    const mod = b.addModule("box2d_clib", .{
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
 
-    var cflags = std.ArrayList([]const u8).init(b.allocator);
-    defer cflags.deinit();
-    cflags.append("-std=c17") catch unreachable;
-    cflags.append("-fvisibility=hidden") catch unreachable;
-    cflags.append("-Dbox2d_EXPORTS") catch unreachable;
+    var cflags = std.ArrayList([]const u8).initCapacity(b.allocator, 8) catch @panic("OOM");
+    cflags.append(b.allocator, "-std=c17") catch @panic("OOM");
+    cflags.append(b.allocator, "-fvisibility=hidden") catch @panic("OOM");
+    cflags.append(b.allocator, "-Dbox2d_EXPORTS") catch @panic("OOM");
     if (target.result.os.tag == .windows) {
-        cflags.append("-D_CRT_SECURE_NO_WARNINGS") catch unreachable;
+        cflags.append(b.allocator, "-D_CRT_SECURE_NO_WARNINGS") catch @panic("OOM");
     }
 
-    inline for (box2d_sources) |src| {
-        lib.addCSourceFile(.{ .file = .{ .path = src }, .flags = cflags.items });
+    inline for (box2d_sources) |csrc| {
+        mod.addCSourceFile(.{ .file = b.path(csrc), .flags = cflags.items });
     }
+    mod.addIncludePath(b.path("../src/box2d/include"));
+    mod.addIncludePath(b.path("../src/box2d/src"));
 
-    lib.addIncludePath(.{ .path = "../src/box2d/include" });
-    lib.addIncludePath(.{ .path = "../src/box2d/src" });
+    const lib = b.addLibrary(.{
+        .name = "box2d",
+        .root_module = mod,
+        .linkage = .dynamic,
+    });
 
-    const file_path = b.option([]const u8, "file-path", "Path to the file") orelse "./out";
-    b.lib_dir = std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{
+    const tgt = target.result;
+    b.lib_dir = std.mem.concat(b.allocator, u8, &.{
         file_path,
-        if (target.result.isWasm())
-            "/libs/runtimes/browser-wasm/native"
-        else if (target.result.isDarwin())
-            "/libs/runtimes/osx-arm64/native"
-        else if (lib.rootModuleTarget().os.tag == .linux)
-            "/libs/runtimes/linux-x64/native"
-        else if (lib.rootModuleTarget().os.tag == .windows)
-            "/libs/runtimes/win-x64/native"
-        else
-            "/libs/runtimes/unknown/native",
-    }) catch |err| {
-        std.debug.print("Failed to concatenate strings: {}\n", .{err});
-        return;
-    };
+        if (tgt.cpu.arch.isWasm()) "/libs/runtimes/browser-wasm/native"
+        else if (tgt.os.tag.isDarwin()) "/libs/runtimes/osx-arm64/native"
+        else if (tgt.os.tag == .linux) "/libs/runtimes/linux-x64/native"
+        else if (tgt.os.tag == .windows) "/libs/runtimes/win-x64/native"
+        else "/libs/runtimes/unknown/native",
+    }) catch @panic("install path concat failed");
 
     b.installArtifact(lib);
 }

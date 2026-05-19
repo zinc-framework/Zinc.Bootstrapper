@@ -1,7 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const Build = std.Build;
-const Step = std.Build.Step;
 const OptimizeMode = std.builtin.OptimizeMode;
 
 pub const SokolBackend = enum {
@@ -13,80 +12,69 @@ pub const SokolBackend = enum {
     wgpu,
 };
 
-// helper function to resolve .auto backend based on target platform
 pub fn resolveSokolBackend(backend: SokolBackend, target: std.Target) SokolBackend {
-    if (backend != .auto) {
-        return backend;
-    } else if (target.isDarwin()) {
-        return .metal;
-    } else if (target.os.tag == .windows) {
-        return .d3d11;
-    } else if (target.isWasm()) {
-        return .gles3;
-    } else if (target.isAndroid()) {
-        return .gles3;
-    } else {
-        return .gl;
-    }
+    if (backend != .auto) return backend;
+    if (target.os.tag.isDarwin()) return .metal;
+    if (target.os.tag == .windows) return .d3d11;
+    if (target.cpu.arch.isWasm()) return .gles3;
+    if (target.abi.isAndroid()) return .gles3;
+    return .gl;
 }
 
 pub fn build(b: *Build) !void {
     const opt_use_gl = b.option(bool, "gl", "Force OpenGL (default: false)") orelse false;
     const opt_use_wgpu = b.option(bool, "wgpu", "Force WebGPU (default: false, web only)") orelse false;
     const opt_use_x11 = b.option(bool, "x11", "Force X11 (default: true, Linux only)") orelse true;
-    const opt_use_wayland = b.option(bool, "wayland", "Force Wayland (default: false, Linux only, not supported in main-line headers)") orelse false;
+    const opt_use_wayland = b.option(bool, "wayland", "Force Wayland (default: false, Linux only)") orelse false;
     const opt_use_egl = b.option(bool, "egl", "Force EGL (default: false, Linux only)") orelse false;
     const sokol_backend: SokolBackend = if (opt_use_gl) .gl else if (opt_use_wgpu) .wgpu else .auto;
 
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const emsdk = b.dependency("emsdk", .{});
+    const file_path = b.option([]const u8, "file-path", "Output root for installed artifacts") orelse "./out";
 
-    if (!target.result.isWasm()) {
-        const dll = b.addSharedLibrary(.{
-            .name = "sokol",
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-        });
-        dll.linkLibCpp();
-        // dll.linkLibC();
+    const target_result = target.result;
+    const is_wasm = target_result.cpu.arch.isWasm();
 
-        try buildLibSokol(b, dll, .{
-            .target = target,
-            .optimize = optimize,
-            .backend = sokol_backend,
-            .use_wayland = opt_use_wayland,
-            .use_x11 = opt_use_x11,
-            .use_egl = opt_use_egl,
-            .emsdk = emsdk,
-        });
-        b.installArtifact(dll);
-    } else {
-        //wasm uses a static lib
-        const lib = b.addStaticLibrary(.{
-            .name = "sokol",
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-        });
-        lib.linkLibCpp(); //bad that maybe cant do this?
-        lib.linkLibC();
+    // wasm uses static linkage; everything else builds a shared library
+    const linkage: std.builtin.LinkMode = if (is_wasm) .static else .dynamic;
 
-        try buildLibSokol(b, lib, .{
-            .target = target,
-            .optimize = optimize,
-            .backend = sokol_backend,
-            .use_wayland = opt_use_wayland,
-            .use_x11 = opt_use_x11,
-            .use_egl = opt_use_egl,
-            .emsdk = emsdk,
-        });
-        b.installArtifact(lib);
-    }
+    // module holds all compile-time settings; the library is built from it
+    const mod = b.addModule("sokol_clib", .{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        .link_libcpp = true,
+    });
+
+    const lib = b.addLibrary(.{
+        .name = "sokol",
+        .root_module = mod,
+        .linkage = linkage,
+    });
+
+    try buildLibSokol(b, mod, lib, .{
+        .target = target,
+        .optimize = optimize,
+        .backend = sokol_backend,
+        .use_wayland = opt_use_wayland,
+        .use_x11 = opt_use_x11,
+        .use_egl = opt_use_egl,
+    });
+
+    // redirect install dir to out/libs/runtimes/<rid>/native
+    b.lib_dir = std.mem.concat(b.allocator, u8, &.{
+        file_path,
+        if (is_wasm) "/libs/runtimes/browser-wasm/native"
+        else if (target_result.os.tag.isDarwin()) "/libs/runtimes/osx-arm64/native"
+        else if (target_result.os.tag == .linux) "/libs/runtimes/linux-x64/native"
+        else if (target_result.os.tag == .windows) "/libs/runtimes/win-x64/native"
+        else "/libs/runtimes/unknown/native",
+    }) catch @panic("install path concat failed");
+
+    b.installArtifact(lib);
 }
 
-// build the sokol C headers
 pub const LibSokolOptions = struct {
     target: Build.ResolvedTarget,
     optimize: OptimizeMode,
@@ -94,119 +82,101 @@ pub const LibSokolOptions = struct {
     use_egl: bool = false,
     use_x11: bool = true,
     use_wayland: bool = false,
-    emsdk: ?*Build.Dependency = null,
 };
-pub fn buildLibSokol(b: *Build, lib: *Step.Compile, options: LibSokolOptions) !void {
-    const opts = b.addOptions();
-    const file_path = b.option([]const u8, "file-path", "Path to the file") orelse "./out";
-    opts.addOption([]const u8, "file-path", file_path);
-    b.lib_dir = std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ file_path, if (options.target.result.isWasm()) "/libs/runtimes/browser-wasm/native" else if (options.target.result.isDarwin()) "/libs/runtimes/osx-arm64/native" else if (lib.rootModuleTarget().os.tag == .linux) "/libs/runtimes/linux-x64/native" else if (lib.rootModuleTarget().os.tag == .windows) "/libs/runtimes/win-x64/native" else "/libs/runtimes/unknown/native" }) catch |err| {
-        std.debug.print("Failed to concatenate strings: {}\n", .{err});
-        return;
-    };
 
-    if (options.target.result.isWasm()) {
+pub fn buildLibSokol(b: *Build, mod: *Build.Module, lib: *Build.Step.Compile, options: LibSokolOptions) !void {
+    _ = lib;
+    const tgt = options.target.result;
+    const backend = resolveSokolBackend(options.backend, tgt);
 
-        // make sure we're building for the wasm32-emscripten target, not wasm32-freestanding
-        if (lib.rootModuleTarget().os.tag != .emscripten) {
-            std.log.err("Please build with 'zig build -Dtarget=wasm32-emscripten", .{});
-            return error.Wasm32EmscriptenExpected;
-        }
+    var cflags = std.ArrayList([]const u8).initCapacity(b.allocator, 16) catch @panic("OOM");
+    var cppflags = std.ArrayList([]const u8).initCapacity(b.allocator, 16) catch @panic("OOM");
 
-        // one-time setup of Emscripten SDK
-        if (try emSdkSetupStep(b, options.emsdk.?)) |emsdk_setup| {
-            lib.step.dependOn(&emsdk_setup.step);
-        }
-        // add the Emscripten system include seach path
-        const emsdk_sysroot = b.pathJoin(&.{ emSdkPath(b, options.emsdk.?), "upstream", "emscripten", "cache", "sysroot" });
-        //log the emsdk_sysroot:
-        std.debug.print("emsdk_sysroot: {c}\n", .{emsdk_sysroot});
+    cflags.append(b.allocator, "-DIMPL") catch @panic("OOM");
+    cppflags.append(b.allocator, "-DIMPL") catch @panic("OOM");
 
-        const include_path = b.pathJoin(&.{ emsdk_sysroot, "include" });
-        lib.addSystemIncludePath(.{ .path = include_path });
-    }
-
-    // resolve .auto backend into specific backend by platform
-    const backend = resolveSokolBackend(options.backend, lib.rootModuleTarget());
-    const backend_cflags = switch (backend) {
+    const backend_define: []const u8 = switch (backend) {
         .d3d11 => "-DSOKOL_D3D11",
         .metal => "-DSOKOL_METAL",
-        .gl => "-DSOKOL_GLCORE",
+        .gl    => "-DSOKOL_GLCORE",
         .gles3 => "-DSOKOL_GLES3",
-        .wgpu => "-DSOKOL_WGPU",
+        .wgpu  => "-DSOKOL_WGPU",
         else => @panic("unknown sokol backend"),
     };
+    cflags.append(b.allocator, backend_define) catch @panic("OOM");
+    cppflags.append(b.allocator, backend_define) catch @panic("OOM");
 
-    // platform specific compile and link options
-    var cflags: []const []const u8 = &.{ "-DIMPL", backend_cflags };
-    var cppflags: []const []const u8 = &.{ "-DIMPL", backend_cflags };
-    if (lib.rootModuleTarget().isDarwin()) {
-        cflags = &.{ "-ObjC", "-DIMPL", backend_cflags };
-        cppflags = &.{ "-ObjC++", "-DIMPL", backend_cflags };
-        lib.linkFramework("Foundation");
-        lib.linkFramework("AudioToolbox");
-        if (.metal == backend) {
-            lib.linkFramework("MetalKit");
-            lib.linkFramework("Metal");
+    if (tgt.os.tag.isDarwin()) {
+        cflags.append(b.allocator, "-ObjC") catch @panic("OOM");
+        cppflags.append(b.allocator, "-ObjC++") catch @panic("OOM");
+        mod.linkFramework("Foundation", .{});
+        mod.linkFramework("AudioToolbox", .{});
+        mod.linkFramework("QuartzCore", .{});
+        if (backend == .metal) {
+            mod.linkFramework("Metal", .{});
+            mod.linkFramework("MetalKit", .{});
         }
-        if (lib.rootModuleTarget().os.tag == .ios) {
-            lib.linkFramework("UIKit");
-            lib.linkFramework("AVFoundation");
-            if (.gl == backend) {
-                lib.linkFramework("OpenGLES");
-                lib.linkFramework("GLKit");
+        if (tgt.os.tag == .ios) {
+            mod.linkFramework("UIKit", .{});
+            mod.linkFramework("AVFoundation", .{});
+            if (backend == .gl) {
+                mod.linkFramework("OpenGLES", .{});
+                mod.linkFramework("GLKit", .{});
             }
-        } else if (lib.rootModuleTarget().os.tag == .macos) {
-            lib.linkFramework("Cocoa");
-            lib.linkFramework("QuartzCore");
-            if (.gl == backend) {
-                lib.linkFramework("OpenGL");
+        } else if (tgt.os.tag == .macos) {
+            mod.linkFramework("Cocoa", .{});
+            mod.linkFramework("AppKit", .{});
+            if (backend == .gl) {
+                mod.linkFramework("OpenGL", .{});
             }
         }
-    } else if (lib.rootModuleTarget().isAndroid()) {
-        if (.gles3 != backend) {
-            @panic("For android targets, you must have backend set to GLES3");
+    } else if (tgt.abi.isAndroid()) {
+        if (backend != .gles3) @panic("Android target requires GLES3 backend");
+        mod.linkSystemLibrary("GLESv3", .{});
+        mod.linkSystemLibrary("EGL", .{});
+        mod.linkSystemLibrary("android", .{});
+        mod.linkSystemLibrary("log", .{});
+    } else if (tgt.os.tag == .linux) {
+        if (options.use_egl) {
+            cflags.append(b.allocator, "-DSOKOL_FORCE_EGL") catch @panic("OOM");
+            cppflags.append(b.allocator, "-DSOKOL_FORCE_EGL") catch @panic("OOM");
         }
-        lib.linkSystemLibrary("GLESv3");
-        lib.linkSystemLibrary("EGL");
-        lib.linkSystemLibrary("android");
-        lib.linkSystemLibrary("log");
-    } else if (lib.rootModuleTarget().os.tag == .linux) {
-        const egl_cflags = if (options.use_egl) "-DSOKOL_FORCE_EGL " else "";
-        const x11_cflags = if (!options.use_x11) "-DSOKOL_DISABLE_X11 " else "";
-        const wayland_cflags = if (!options.use_wayland) "-DSOKOL_DISABLE_WAYLAND" else "";
+        if (!options.use_x11) {
+            cflags.append(b.allocator, "-DSOKOL_DISABLE_X11") catch @panic("OOM");
+            cppflags.append(b.allocator, "-DSOKOL_DISABLE_X11") catch @panic("OOM");
+        }
+        if (!options.use_wayland) {
+            cflags.append(b.allocator, "-DSOKOL_DISABLE_WAYLAND") catch @panic("OOM");
+            cppflags.append(b.allocator, "-DSOKOL_DISABLE_WAYLAND") catch @panic("OOM");
+        }
         const link_egl = options.use_egl or options.use_wayland;
-        cflags = &.{ "-DIMPL", backend_cflags, egl_cflags, x11_cflags, wayland_cflags };
-        cppflags = &.{ "-DIMPL", backend_cflags, egl_cflags, x11_cflags, wayland_cflags };
-        lib.linkSystemLibrary("asound");
-        lib.linkSystemLibrary("GL");
+        mod.linkSystemLibrary("asound", .{});
+        mod.linkSystemLibrary("GL", .{});
         if (options.use_x11) {
-            lib.linkSystemLibrary("X11");
-            lib.linkSystemLibrary("Xi");
-            lib.linkSystemLibrary("Xcursor");
+            mod.linkSystemLibrary("X11", .{});
+            mod.linkSystemLibrary("Xi", .{});
+            mod.linkSystemLibrary("Xcursor", .{});
         }
         if (options.use_wayland) {
-            lib.linkSystemLibrary("wayland-client");
-            lib.linkSystemLibrary("wayland-cursor");
-            lib.linkSystemLibrary("wayland-egl");
-            lib.linkSystemLibrary("xkbcommon");
+            mod.linkSystemLibrary("wayland-client", .{});
+            mod.linkSystemLibrary("wayland-cursor", .{});
+            mod.linkSystemLibrary("wayland-egl", .{});
+            mod.linkSystemLibrary("xkbcommon", .{});
         }
-        if (link_egl) {
-            lib.linkSystemLibrary("EGL");
-        }
-    } else if (lib.rootModuleTarget().os.tag == .windows) {
-        lib.linkSystemLibrary("kernel32");
-        lib.linkSystemLibrary("user32");
-        lib.linkSystemLibrary("gdi32");
-        lib.linkSystemLibrary("ole32");
-        if (.d3d11 == backend) {
-            lib.linkSystemLibrary("d3d11");
-            lib.linkSystemLibrary("dxgi");
+        if (link_egl) mod.linkSystemLibrary("EGL", .{});
+    } else if (tgt.os.tag == .windows) {
+        mod.linkSystemLibrary("kernel32", .{});
+        mod.linkSystemLibrary("user32", .{});
+        mod.linkSystemLibrary("gdi32", .{});
+        mod.linkSystemLibrary("ole32", .{});
+        if (backend == .d3d11) {
+            mod.linkSystemLibrary("d3d11", .{});
+            mod.linkSystemLibrary("dxgi", .{});
         }
     }
 
     // dcimgui sources (docking branch). v1.92+ split out cimgui_internal.cpp/h
-    // which provides internal symbols sokol_imgui's font-atlas path can pull in.
+    // for the symbols sokol_imgui's font-atlas path uses internally.
     const cpp_sources = [_][]const u8{
         "../../dcimgui/src/dcimgui/src-docking/cimgui.cpp",
         "../../dcimgui/src/dcimgui/src-docking/cimgui_internal.cpp",
@@ -216,58 +186,12 @@ pub fn buildLibSokol(b: *Build, lib: *Step.Compile, options: LibSokolOptions) !v
         "../../dcimgui/src/dcimgui/src-docking/imgui_tables.cpp",
         "../../dcimgui/src/dcimgui/src-docking/imgui_widgets.cpp",
     };
-
     const c_sources = [_][]const u8{"sokol.c"};
 
     inline for (c_sources) |csrc| {
-        lib.addCSourceFile(.{
-            .file = .{ .path = csrc },
-            .flags = cflags,
-        });
+        mod.addCSourceFile(.{ .file = b.path(csrc), .flags = cflags.items });
     }
     inline for (cpp_sources) |csrc| {
-        lib.addCSourceFile(.{
-            .file = .{ .path = csrc },
-            .flags = cppflags,
-        });
-    }
-    // return lib;
-}
-
-// helper function to extract emsdk path from the emsdk package dependency
-fn emSdkPath(b: *Build, emsdk: *Build.Dependency) []const u8 {
-    return emsdk.path("").getPath(b);
-}
-
-// One-time setup of the Emscripten SDK (runs 'emsdk install + activate'). If the
-// SDK had to be setup, a run step will be returned which should be added
-// as dependency to the sokol library (since this needs the emsdk in place),
-// if the emsdk was already setup, null will be returned.
-// NOTE: ideally this would go into a separate emsdk-zig package
-fn emSdkSetupStep(b: *Build, emsdk: *Build.Dependency) !?*Build.Step.Run {
-    const emsdk_path = emSdkPath(b, emsdk);
-    const dot_emsc_path = b.pathJoin(&.{ emsdk_path, ".emscripten" });
-    const dot_emsc_exists = !std.meta.isError(std.fs.accessAbsolute(dot_emsc_path, .{}));
-    if (!dot_emsc_exists) {
-        // std.debug.print("emsdk_sysroot: {c}\n", .{emsdk_sysroot});
-        std.debug.print("setting up emsdk\n", .{});
-        var cmd = std.ArrayList([]const u8).init(b.allocator);
-        defer cmd.deinit();
-        if (builtin.os.tag == .windows)
-            try cmd.append(b.pathJoin(&.{ emsdk_path, "emsdk.bat" }))
-        else {
-            try cmd.append("bash"); // or try chmod
-            try cmd.append(b.pathJoin(&.{ emsdk_path, "emsdk" }));
-        }
-        const emsdk_install = b.addSystemCommand(cmd.items);
-        // emsdk_install.addArgs(&.{ "install", "latest" });
-        emsdk_install.addArgs(&.{ "install", "3.1.56" });
-        const emsdk_activate = b.addSystemCommand(cmd.items);
-        // emsdk_activate.addArgs(&.{ "activate", "latest" });
-        emsdk_activate.addArgs(&.{ "activate", "3.1.56" });
-        emsdk_activate.step.dependOn(&emsdk_install.step);
-        return emsdk_activate;
-    } else {
-        return null;
+        mod.addCSourceFile(.{ .file = b.path(csrc), .flags = cppflags.items });
     }
 }

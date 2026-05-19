@@ -1,15 +1,8 @@
 .{
-    .name = "sokol",
+    .name = .sokol,
+    .fingerprint = 0xf9f6f48d79315653,
     .version = "0.1.0",
-    .minimum_zig_version = "0.12.0",
-    .paths = .{ "src", "build.zig", "build.zig.zon" },
-    .dependencies = .{
-        .emsdk = .{
-            // pulled from runtimelab dotnet/runtimelab emsdk version for nativaot-llvm
-            //https://github.com/dotnet/runtimelab/blob/feature/NativeAOT-LLVM/eng/pipelines/runtimelab/install-emscripten.ps1
-            .url = "git+https://github.com/emscripten-core/emsdk#ca7b40ae222a2d8763b6ac845388744b0e57cfb7",
-            //hash comes when you run build and it spits out the expected hash
-            .hash = "12200ba39d83227f5de08287b043b011a2eb855cdb077f4b165edce30564ba73400e",
-        },
-    },
+    .minimum_zig_version = "0.16.0",
+    .paths = .{ "build.zig", "build.zig.zon", "sokol.c" },
+    .dependencies = .{},
 }
