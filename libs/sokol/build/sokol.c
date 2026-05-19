@@ -39,3 +39,5 @@
 #include "../../dcimgui/src/dcimgui/src-docking/cimgui.h"
 #include "../src/sokol/util/sokol_imgui.h"
 #include "../src/sokol/util/sokol_gfx_imgui.h"
+#include "../src/sokol/util/sokol_app_imgui.h"
+#include "../src/sokol/util/sokol_letterbox.h"

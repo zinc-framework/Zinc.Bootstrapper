@@ -183,7 +183,22 @@ var sokol = new lib("sokol", [
             ]}
         ],
         rspInclude:sokol_settings),
-    new ("sokol_log", 
+    new ("sokol_app_imgui",
+        "./libs/sokol/bindgen/sokol_app_imgui_bindgen_helper.h",
+        "sappimgui_",
+        "AppDebugGUI",
+        $"{outputPath}/bindings/sokol/Sokol.App.DebugGUI.cs",
+        [
+            traverse with { flagParams = ["./libs/sokol/src/sokol/util/sokol_app_imgui.h"]}
+        ],
+        rspInclude:sokol_settings),
+    new ("sokol_letterbox",
+        "./libs/sokol/src/sokol/util/sokol_letterbox.h",
+        "slbx_",
+        "Letterbox",
+        $"{outputPath}/bindings/sokol/Sokol.Letterbox.cs",
+        rspInclude:sokol_settings),
+    new ("sokol_log",
         "./libs/sokol/src/sokol/sokol_log.h",
         "",
         "Log",
