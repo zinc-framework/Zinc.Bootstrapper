@@ -366,34 +366,45 @@ foreach (var l in buildLibs)
     Target($"{l.libName}", DependsOn($"{l.libName}:build", $"{l.libName}:bindgen"));
 }
 
-// sokol-shdc — pre-built shader compiler that ships with sokol-tools-bin.
-// Used by sokol_gp's shader regen and exposed for Zinc consumers who want to
-// compile their own .glsl into multi-backend shader blobs.
-var shdcRid = RuntimeInformation.RuntimeIdentifier switch
+// sokol-shdc — prebuilt shader compiler from the sokol-tools-bin submodule.
+// The `shdc` target copies all 5 RID binaries into out/libs/tools/<dotnet-rid>/ so Zinc
+// consumers get the shader compiler via the Zinc.Libs artifact and don't need the submodule
+// themselves. Maps sokol-tools-bin's RID dir names to the .NET RIDs used under out/libs/runtimes/.
+var shdcRidMap = new (string toolsRid, string dotnetRid, string exe)[]
 {
-    "win-x64"   => "win32",
-    "osx-arm64" => "osx_arm64",
-    "osx-x64"   => "osx",
-    "linux-x64" => "linux",
-    "linux-arm64" => "linux_arm64",
-    _ => "osx_arm64"
+    ("osx_arm64",   "osx-arm64",   "sokol-shdc"),
+    ("osx",         "osx-x64",     "sokol-shdc"),
+    ("win32",       "win-x64",     "sokol-shdc.exe"),
+    ("linux",       "linux-x64",   "sokol-shdc"),
+    ("linux_arm64", "linux-arm64", "sokol-shdc"),
 };
-var shdcExe = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "sokol-shdc.exe" : "sokol-shdc";
-var shdcPath = Path.Combine(projectDir, "libs/sokol-tools/src/sokol-tools-bin/bin", shdcRid, shdcExe);
-
-Target("shdc:path", () => Console.WriteLine(shdcPath));
 Target("shdc", () =>
 {
-    // forward any trailing args after `--` to shdc; otherwise show help.
-    var dashIdx = Array.IndexOf(args, "--");
-    var shdcArgs = dashIdx >= 0 && dashIdx + 1 < args.Length
-        ? string.Join(" ", args.Skip(dashIdx + 1))
-        : "--help";
-    Run(shdcPath, shdcArgs);
+    foreach (var (toolsRid, dotnetRid, exe) in shdcRidMap)
+    {
+        var src = Path.Combine(projectDir, "libs/sokol-tools/src/sokol-tools-bin/bin", toolsRid, exe);
+        if (!File.Exists(src))
+        {
+            Console.WriteLine($"shdc skip (missing, did you init the sokol-tools-bin submodule?): {src}");
+            continue;
+        }
+        var destDir = Path.Combine(outputPath, "libs", "tools", dotnetRid);
+        Directory.CreateDirectory(destDir);
+        var dest = Path.Combine(destDir, exe);
+        File.Copy(src, dest, overwrite: true);
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(dest,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+                UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+                UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+        }
+        Console.WriteLine($"shdc {toolsRid} -> {dest}");
+    }
 });
 
 Target("echo", () => Console.WriteLine("echo"));
-Target("default", DependsOn(buildLibs.Select(x => x.libName).ToArray()));
+Target("default", DependsOn(buildLibs.Select(x => x.libName).Append("shdc").ToArray()));
 
 await RunTargetsAndExitAsync(args);
 

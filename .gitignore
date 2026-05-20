@@ -17,3 +17,5 @@ riderModule.iml
 
 .DS_Store
 libs/sokol/build/.zig-cache/
+
+libs/stb/build/.zig-cache/

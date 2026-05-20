@@ -3,7 +3,8 @@
 	url = https://github.com/nothings/stb
 [submodule "sokol"]
 	path = libs/sokol/src/sokol
-	url = https://github.com/floooh/sokol
+	url = https://github.com/zinc-framework/sokol.git
+	branch = zinc
 [submodule "sokol_gp"]
 	path = libs/sokol/src/sokol_gp
 	url = https://github.com/zinc-framework/sokol_gp.git
