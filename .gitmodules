@@ -1,11 +1,11 @@
-[submodule "stb"]
+[submodule "libs/stb/src/stb"]
 	path = libs/stb/src/stb
 	url = https://github.com/nothings/stb
-[submodule "sokol"]
+[submodule "libs/sokol/src/sokol"]
 	path = libs/sokol/src/sokol
 	url = https://github.com/zinc-framework/sokol.git
 	branch = zinc
-[submodule "sokol_gp"]
+[submodule "libs/sokol/src/sokol_gp"]
 	path = libs/sokol/src/sokol_gp
 	url = https://github.com/zinc-framework/sokol_gp.git
 	branch = sokol-view-objects
@@ -15,7 +15,7 @@
 [submodule "out/libs"]
 	path = out/libs
 	url = https://github.com/zinc-framework/Zinc.Libs
-[submodule "box2d"]
+[submodule "libs/box2d/src/box2d"]
 	path = libs/box2d/src/box2d
 	url = https://github.com/erincatto/box2d.git
 [submodule "libs/dcimgui/src/dcimgui"]
