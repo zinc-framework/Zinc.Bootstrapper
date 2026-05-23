@@ -22,6 +22,12 @@
 #include "../src/sokol/sokol_fetch.h"
 #include "../src/sokol/sokol_gfx.h"
 
+// Zinc: raise sokol_gp's per-draw caps above the upstream defaults (8 uniform floats / 4 textures)
+// so custom shaders can carry larger uniform blocks (up to 256 bytes combined vs+fs) and more
+// texture channels. Mirrored C#-side by MaterialComponent.MaxUniformBytes / TextureSlots, which
+// bounds-check against these exact values — keep the two in sync if you change them here.
+#define SGP_UNIFORM_CONTENT_SLOTS 64
+#define SGP_TEXTURE_SLOTS 8
 #include "../src/sokol_gp/sokol_gp.h"
 
 #include "../src/sokol/sokol_glue.h"
