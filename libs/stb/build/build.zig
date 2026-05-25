@@ -13,6 +13,23 @@ pub fn build(b: *Build) void {
     });
     mod.addCSourceFile(.{ .file = b.path("stb.c"), .flags = &.{} });
 
+    // Native GPU->CPU readback used by Zinc's screenshot path (sokol has no portable pixel readback).
+    // Backend-specific: Metal (.m, ObjC+ARC) on Apple, D3D11/GL/GLES (.c) elsewhere.
+    const os = target.result.os.tag;
+    if (os.isDarwin()) {
+        mod.addCSourceFile(.{ .file = b.path("screenshot.m"), .flags = &.{ "-fobjc-arc" } });
+        mod.linkFramework("Metal", .{});
+        mod.linkFramework("Foundation", .{});
+        mod.linkFramework("QuartzCore", .{});
+    } else {
+        mod.addCSourceFile(.{ .file = b.path("screenshot_other.c"), .flags = &.{} });
+        if (os == .windows) {
+            mod.linkSystemLibrary("d3d11", .{});
+        } else if (os == .linux) {
+            mod.linkSystemLibrary("dl", .{}); // dlsym for GL entry points
+        }
+    }
+
     const lib = b.addLibrary(.{
         .name = "stb",
         .root_module = mod,
