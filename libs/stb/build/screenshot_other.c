@@ -13,6 +13,9 @@
 
 // declarations only; the implementation is compiled in stb.c (STB_IMAGE_WRITE_IMPLEMENTATION)
 #include "../src/stb/stb_image_write.h"
+// ZINC_EXPORT: dllexport when we're building this DLL, otherwise plain extern. See zinc_export.h
+// for the why (mingw's per-object auto-export rule).
+#include "../../zinc_export.h"
 
 // Pack a backend-read scanline buffer into tight top-left RGBA and write the PNG.
 //   bgra      : swap R/B (Metal/D3D swapchains are usually BGRA)
@@ -49,8 +52,8 @@ static int zinc__pack_and_write(const uint8_t* src, int w, int h, int srcPitch,
 
 // Copy the render-target texture into a STAGING texture, Map it, write the PNG. `tex2d` is sokol's
 // ID3D11Texture2D (sg_d3d11_query_image_info(...).tex2d); device/context are sokol's D3D11 objects.
-int zinc_write_d3d11_texture_png(const void* device_, const void* context_, const void* tex2d_,
-                                 int w, int h, const char* path, int flip_y) {
+ZINC_EXPORT int zinc_write_d3d11_texture_png(const void* device_, const void* context_, const void* tex2d_,
+                                             int w, int h, const char* path, int flip_y) {
     ID3D11Device* device = (ID3D11Device*)device_;
     ID3D11DeviceContext* ctx = (ID3D11DeviceContext*)context_;
     ID3D11Texture2D* src = (ID3D11Texture2D*)tex2d_;
@@ -116,7 +119,7 @@ typedef void (*PFN_glDeleteFramebuffers)(GLsizei, const GLuint*);
 // Attach the texture to a temporary FBO and glReadPixels it. `glTexture` is sokol's GL texture name
 // (sg_gl_query_image_info(...).tex[active_slot]). The GL context must be current on this thread (it is —
 // the engine calls this from the frame callback).
-int zinc_write_gl_texture_png(unsigned int glTexture, int w, int h, const char* path, int flip_y) {
+ZINC_EXPORT int zinc_write_gl_texture_png(unsigned int glTexture, int w, int h, const char* path, int flip_y) {
     if (!path || w <= 0 || h <= 0) return 0;
 
 #if defined(__EMSCRIPTEN__)
@@ -156,11 +159,11 @@ int zinc_write_gl_texture_png(unsigned int glTexture, int w, int h, const char* 
 // ====================================================================================================
 #else // unknown backend — graceful stubs so the symbols still resolve
 
-int zinc_write_d3d11_texture_png(const void* d, const void* c, const void* t,
-                                 int w, int h, const char* path, int flip_y) {
+ZINC_EXPORT int zinc_write_d3d11_texture_png(const void* d, const void* c, const void* t,
+                                             int w, int h, const char* path, int flip_y) {
     (void)d;(void)c;(void)t;(void)w;(void)h;(void)path;(void)flip_y; return 0;
 }
-int zinc_write_gl_texture_png(unsigned int tex, int w, int h, const char* path, int flip_y) {
+ZINC_EXPORT int zinc_write_gl_texture_png(unsigned int tex, int w, int h, const char* path, int flip_y) {
     (void)tex;(void)w;(void)h;(void)path;(void)flip_y; return 0;
 }
 

@@ -63,7 +63,7 @@ pub fn build(b: *Build) !void {
     });
 
     // redirect install dir to out/libs/runtimes/<rid>/native
-    b.lib_dir = std.mem.concat(b.allocator, u8, &.{
+    const native_dir = std.mem.concat(b.allocator, u8, &.{
         file_path,
         if (is_wasm) "/libs/runtimes/browser-wasm/native"
         else if (target_result.os.tag.isDarwin()) "/libs/runtimes/osx-arm64/native"
@@ -71,6 +71,11 @@ pub fn build(b: *Build) !void {
         else if (target_result.os.tag == .windows) "/libs/runtimes/win-x64/native"
         else "/libs/runtimes/unknown/native",
     }) catch @panic("install path concat failed");
+    b.lib_dir = native_dir;
+    // On Windows zig installs the .dll into `bin/` and the import .lib into `lib/`. We want
+    // everything in one `native/` directory so DllImport finds the dll alongside the lib at
+    // runtime — point both at the same path.
+    b.exe_dir = native_dir;
 
     b.installArtifact(lib);
 }
@@ -173,6 +178,14 @@ pub fn buildLibSokol(b: *Build, mod: *Build.Module, lib: *Build.Step.Compile, op
             mod.linkSystemLibrary("d3d11", .{});
             mod.linkSystemLibrary("dxgi", .{});
         }
+        // dcimgui leaves CIMGUI_API empty unless overridden, so on a Windows shared-library build
+        // none of the ig*/Im* C-API symbols would land in the PE export table — the C# binding
+        // looks them up by name and fails at runtime. (lld-mingw's implicit auto-export gets us
+        // sg_*/sapp_*/sgp_* in sokol.c, but not these from a separately-compiled translation unit.)
+        // Force CIMGUI_API to __declspec(dllexport) at compile time for both the .c (cflags) and
+        // .cpp (cppflags) sources so every `CIMGUI_API` declaration becomes an export.
+        cflags.append(b.allocator, "-DCIMGUI_API=__declspec(dllexport)") catch @panic("OOM");
+        cppflags.append(b.allocator, "-DCIMGUI_API=__declspec(dllexport)") catch @panic("OOM");
     }
 
     // dcimgui sources (docking branch). v1.92+ split out cimgui_internal.cpp/h

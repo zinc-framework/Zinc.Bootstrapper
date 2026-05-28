@@ -12,6 +12,8 @@
 
 // declarations only; the implementation is compiled in stb.c (STB_IMAGE_WRITE_IMPLEMENTATION)
 #include "../src/stb/stb_image_write.h"
+// ZINC_EXPORT: see zinc_export.h. No-op on Mach-O (default visibility is already exported).
+#include "../../zinc_export.h"
 
 // Read `mtl_texture`'s pixels and write them to `path` as an 8-bit RGBA PNG.
 //   mtl_queue: the MTLCommandQueue to submit the readback blit on. Pass sokol's queue
@@ -20,7 +22,7 @@
 //     the source texture's writes have already completed).
 //   flip_y != 0 flips vertically (use when the source was rendered with a flipped/sampling projection).
 // Returns 1 on success, 0 on failure.
-int zinc_write_texture_png(const void* mtl_texture, const void* mtl_queue, const char* path, int flip_y) {
+ZINC_EXPORT int zinc_write_texture_png(const void* mtl_texture, const void* mtl_queue, const char* path, int flip_y) {
     @autoreleasepool {
         id<MTLTexture> tex = (__bridge id<MTLTexture>)mtl_texture;
         if (tex == nil || path == NULL) return 0;

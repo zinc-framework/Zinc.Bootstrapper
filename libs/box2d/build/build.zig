@@ -75,7 +75,7 @@ pub fn build(b: *Build) void {
     });
 
     const tgt = target.result;
-    b.lib_dir = std.mem.concat(b.allocator, u8, &.{
+    const native_dir = std.mem.concat(b.allocator, u8, &.{
         file_path,
         if (tgt.cpu.arch.isWasm()) "/libs/runtimes/browser-wasm/native"
         else if (tgt.os.tag.isDarwin()) "/libs/runtimes/osx-arm64/native"
@@ -83,6 +83,11 @@ pub fn build(b: *Build) void {
         else if (tgt.os.tag == .windows) "/libs/runtimes/win-x64/native"
         else "/libs/runtimes/unknown/native",
     }) catch @panic("install path concat failed");
+    b.lib_dir = native_dir;
+    // On Windows zig installs the .dll into `bin/` and the import .lib into `lib/`. We want
+    // everything in one `native/` directory so DllImport finds the dll alongside the lib at
+    // runtime — point both at the same path.
+    b.exe_dir = native_dir;
 
     b.installArtifact(lib);
 }
