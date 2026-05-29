@@ -10,8 +10,9 @@
 #import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
 
-// declarations only; the implementation is compiled in stb.c (STB_IMAGE_WRITE_IMPLEMENTATION)
-#include "../src/stb/stb_image_write.h"
+// declarations only; the implementation is compiled in stb_image_write_impl.c
+// (sibling TU in this same DLL — zinc_platform owns its own copy so it doesn't depend on stb.dll).
+#include "../../stb/src/stb/stb_image_write.h"
 // ZINC_EXPORT: see zinc_export.h. No-op on Mach-O (default visibility is already exported).
 #include "../../zinc_export.h"
 

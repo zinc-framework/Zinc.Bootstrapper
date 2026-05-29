@@ -244,7 +244,7 @@ var box2d_settings = new rsp("box2d_settings", rspInclude: bindgenBase, flags:
     new("libraryPath", "box2d")
 ]);
 var box2d = new lib("box2d", [
-    new ("box2d", 
+    new ("box2d",
         "./libs/box2d/bindgen/box2d_bindgen_helper.h",
         "",
         "Box2D",
@@ -261,12 +261,18 @@ var box2d = new lib("box2d", [
         ],
         rspInclude:box2d_settings),
 ]);
-    
+
+// zinc_platform: Zinc-owned platform abstractions (memory, screenshot readback). Pure
+// hand-written exports — no ClangSharp bindings needed (consumers DllImport them by name).
+// Build-only target; empty bindgen list intentionally.
+var zinc_platform = new lib("zinc_platform", []);
+
 
 List<lib> buildLibs = [
     sokol,
     stb,
-    box2d
+    box2d,
+    zinc_platform
 ];
 
 var projectDir = Directory.GetCurrentDirectory();

@@ -16,26 +16,11 @@ pub fn build(b: *Build) void {
     // Windows / default visibility on Mach-O/ELF). Mirrors sokol's SOKOL_DLL convention; one
     // build flag controls every TU in this lib instead of each .c file rolling its own.
     const c_flags = [_][]const u8{"-DZINC_BUILDING_DLL"};
-    const objc_flags = [_][]const u8{ "-DZINC_BUILDING_DLL", "-fobjc-arc" };
 
     mod.addCSourceFile(.{ .file = b.path("stb.c"), .flags = &c_flags });
 
-    // Native GPU->CPU readback used by Zinc's screenshot path (sokol has no portable pixel readback).
-    // Backend-specific: Metal (.m, ObjC+ARC) on Apple, D3D11/GL/GLES (.c) elsewhere.
-    const os = target.result.os.tag;
-    if (os.isDarwin()) {
-        mod.addCSourceFile(.{ .file = b.path("screenshot.m"), .flags = &objc_flags });
-        mod.linkFramework("Metal", .{});
-        mod.linkFramework("Foundation", .{});
-        mod.linkFramework("QuartzCore", .{});
-    } else {
-        mod.addCSourceFile(.{ .file = b.path("screenshot_other.c"), .flags = &c_flags });
-        if (os == .windows) {
-            mod.linkSystemLibrary("d3d11", .{});
-        } else if (os == .linux) {
-            mod.linkSystemLibrary("dl", .{}); // dlsym for GL entry points
-        }
-    }
+    // Native GPU->CPU readback for screenshots used to live here; it moved to
+    // libs/zinc_platform/build/ so this DLL is just stb_image + stb_image_write.
 
     const lib = b.addLibrary(.{
         .name = "stb",

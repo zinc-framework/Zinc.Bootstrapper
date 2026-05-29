@@ -19,3 +19,5 @@ riderModule.iml
 libs/sokol/build/.zig-cache/
 
 libs/stb/build/.zig-cache/
+
+libs/zinc_platform/build/.zig-cache/
