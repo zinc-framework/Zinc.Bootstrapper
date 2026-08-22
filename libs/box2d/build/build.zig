@@ -8,7 +8,6 @@ const Build = std.Build;
 const box2d_sources = [_][]const u8{
     "../src/box2d/src/aabb.c",
     "../src/box2d/src/arena_allocator.c",
-    "../src/box2d/src/array.c",
     "../src/box2d/src/bitset.c",
     "../src/box2d/src/body.c",
     "../src/box2d/src/broad_phase.c",
@@ -27,10 +26,16 @@ const box2d_sources = [_][]const u8{
     "../src/box2d/src/manifold.c",
     "../src/box2d/src/math_functions.c",
     "../src/box2d/src/motor_joint.c",
-    "../src/box2d/src/mouse_joint.c",
+    "../src/box2d/src/mover_joint.c",
     "../src/box2d/src/mover.c",
+    "../src/box2d/src/parallel_for.c",
+    "../src/box2d/src/physics_world.c",
+    "../src/box2d/src/pogo_joint.c",
     "../src/box2d/src/prismatic_joint.c",
+    "../src/box2d/src/recording.c",
+    "../src/box2d/src/recording_replay.c",
     "../src/box2d/src/revolute_joint.c",
+    "../src/box2d/src/scheduler.c",
     "../src/box2d/src/sensor.c",
     "../src/box2d/src/shape.c",
     "../src/box2d/src/solver.c",
@@ -40,7 +45,7 @@ const box2d_sources = [_][]const u8{
     "../src/box2d/src/types.c",
     "../src/box2d/src/weld_joint.c",
     "../src/box2d/src/wheel_joint.c",
-    "../src/box2d/src/world.c",
+    "../src/box2d/src/world_snapshot.c",
 };
 
 pub fn build(b: *Build) void {

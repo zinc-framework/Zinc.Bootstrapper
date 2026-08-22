@@ -39,6 +39,33 @@ the `DLL_BUILD` / `STATIC_BUILD` defines at the top of the file. `DLL_BUILD`
 enables `SOKOL_DLL`; `STATIC_BUILD` injects the `__stack_chk_guard` shim until
 that workaround is no longer needed.
 
+## Sokol
+`libs/sokol/src/sokol` points at the [zinc-framework/sokol](https://github.com/zinc-framework/sokol)
+fork, branch `zinc`. As of the Aug-2026 bump that branch carries **no patches** — it is a
+straight mirror of upstream `floooh/sokol` master. The fork stays in place so we have
+somewhere to land a patch if we need one again, not because we currently have one.
+
+The patch it used to carry forced `CAMetalLayer.displaySyncEnabled = NO` to work around
+macOS Tahoe input lag (floooh/sokol#1344). It was dropped once upstream shipped the same
+knob as a supported option, `sapp_desc.metal.disable_display_sync`, in the Jul-2026
+swapchain update — consumers that want the old behaviour set that field to `true`.
+
+To move the fork to a newer upstream, from inside the submodule:
+
+```
+git fetch origin                    # origin = floooh/sokol (upstream)
+git checkout zinc
+git reset --hard origin/master      # or rebase, if the branch has patches again
+git push --force-with-lease zinc zinc   # zinc = zinc-framework/sokol (the fork)
+```
+
+Note the local remote layout: `origin` is upstream and `zinc` is the fork, matching how
+`sokol_gp` is wired. A fresh clone gets `origin` = the fork instead, per `.gitmodules`.
+
+`libs/sokol/src/sokol_gp` points at [zinc-framework/sokol_gp](https://github.com/zinc-framework/sokol_gp)
+(`sokol-view-objects`), which is upstream edubart/sokol_gp plus one commit porting it to
+sokol's view-object API. That one *is* a real patch — re-port it if upstream sokol_gp moves.
+
 ## ImGui
 We consume [floooh/dcimgui](https://github.com/floooh/dcimgui) (docking variant)
 directly — this provides Dear ImGui + the dear_bindings-generated C API with the

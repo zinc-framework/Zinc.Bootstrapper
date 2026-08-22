@@ -238,6 +238,7 @@ var box2d_settings = new rsp("box2d_settings", rspInclude: bindgenBase, flags:
 [
     new("include-directory", [
         ..platformDefines,
+        "./libs/box2d/src/box2d/include",
         "./libs/box2d/src/box2d/include/box2d"
     ]),
     new("namespace", "Zinc.Internal.Box2D"),
