@@ -9,6 +9,10 @@ const Build = std.Build;
 //   zinc_memory.c          — VirtualAlloc/mmap wrappers (zinc_mem_*). Cross-platform.
 //   screenshot.m           — Metal GPU readback + PNG write. Apple only.
 //   screenshot_other.c     — D3D11 / GL GPU readback + PNG write. Windows/Linux.
+//   zinc_window.c / .m     — desktop-companion window controls (borderless, always-on-top,
+//                            drag-by-content, click-through). Restyles the native window
+//                            sokol hands out via sapp_win32_get_hwnd / sapp_macos_get_window,
+//                            which keeps the sokol fork free of divergence.
 // Both screenshot TUs include their own STB_IMAGE_WRITE implementation (via a
 // dedicated stb_image_write_impl.c) so zinc_platform doesn't depend on the stb
 // DLL at link time. Doubles up the stb_image_write code (a few KB), but keeps
@@ -40,11 +44,14 @@ pub fn build(b: *Build) void {
     const os = target.result.os.tag;
     if (os.isDarwin()) {
         mod.addCSourceFile(.{ .file = b.path("screenshot.m"), .flags = &objc_flags });
+        mod.addCSourceFile(.{ .file = b.path("zinc_window.m"), .flags = &objc_flags });
         mod.linkFramework("Metal", .{});
         mod.linkFramework("Foundation", .{});
         mod.linkFramework("QuartzCore", .{});
+        mod.linkFramework("Cocoa", .{});
     } else {
         mod.addCSourceFile(.{ .file = b.path("screenshot_other.c"), .flags = &c_flags });
+        mod.addCSourceFile(.{ .file = b.path("zinc_window.c"), .flags = &c_flags });
         if (os == .windows) {
             mod.linkSystemLibrary("d3d11", .{});
         } else if (os == .linux) {
