@@ -127,10 +127,13 @@ ZINC_EXPORT int32_t zinc_window_begin_drag(void* handle) {
 //
 // WS_EX_LAYERED normally wants SetLayeredWindowAttributes to define how the window is
 // composited, so we set fully-opaque alpha; on a DirectComposition window the visual
-// content still comes from the swapchain. NOTE the open question: WS_EX_LAYERED is the
-// legacy GDI compositing path and may not coexist with the WS_EX_NOREDIRECTIONBITMAP a
-// composited window carries. If a transparent window goes blank when click-through is
-// enabled, that is this conflict, and click-through is then opaque-mode only.
+// content still comes from the swapchain.
+//
+// VERIFIED on Windows 11: this coexists fine with the WS_EX_NOREDIRECTIONBITMAP that a
+// composited window carries. The concern that WS_EX_LAYERED, being the legacy GDI
+// compositing path, would blank a DirectComposition window turns out to be unfounded --
+// click-through works in both opaque and transparent modes, and the window keeps
+// rendering and compositing normally while it is on.
 static BOOL _zinc_click_through = FALSE;
 
 ZINC_EXPORT int32_t zinc_window_set_click_through(void* handle, int32_t enable) {
