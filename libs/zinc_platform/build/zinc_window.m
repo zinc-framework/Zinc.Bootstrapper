@@ -76,6 +76,13 @@ ZINC_EXPORT int32_t zinc_window_set_click_through(void* handle, int32_t enable) 
     return 1;
 }
 
+// No subclassing needed on macOS: ignoresMouseEvents above is the whole mechanism, so
+// there is no winproc to restore. Present for API symmetry with the Windows side.
+ZINC_EXPORT int32_t zinc_window_restore_wndproc(void* handle) {
+    (void)handle;
+    return 1;
+}
+
 // Cocoa's origin is bottom-left of the primary screen; Zinc (and the Windows side) speak
 // top-left, so flip through the primary screen's height.
 ZINC_EXPORT int32_t zinc_window_set_position(void* handle, int32_t x, int32_t y) {
