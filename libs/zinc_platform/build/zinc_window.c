@@ -116,64 +116,47 @@ ZINC_EXPORT int32_t zinc_window_begin_drag(void* handle) {
     return 1;
 }
 
-// Click-through: let mouse input fall through to whatever is behind the window, so a
-// companion can be purely decorative.
+// Click-through: let mouse input fall through to whatever is behind the window, including
+// other applications, so a companion can be purely decorative.
 //
-// The usual Win32 recipe is WS_EX_LAYERED | WS_EX_TRANSPARENT, but that is unavailable
-// here: WS_EX_LAYERED is the legacy GDI compositing path and is incompatible with the
-// WS_EX_NOREDIRECTIONBITMAP that a DirectComposition (transparent) window requires -- a
-// window with no redirection bitmap has nothing for the layered path to composite. And
-// WS_EX_TRANSPARENT on its own does nothing for input.
+// This needs WS_EX_LAYERED | WS_EX_TRANSPARENT *together*. Neither half works alone:
+//   - WS_EX_TRANSPARENT by itself does nothing for input.
+//   - WM_NCHITTEST/HTTRANSPARENT only forwards to windows in the SAME THREAD (see the
+//     WM_NCHITTEST docs), so it cannot pass clicks to another process -- which is the
+//     entire point here. An earlier version of this used it and appeared to do nothing.
 //
-// So instead we answer WM_NCHITTEST with HTTRANSPARENT, which tells the system to keep
-// hit-testing into the windows underneath (across processes). That's an ordinary window
-// message, unaffected by how the window is composited, so it works in both modes. sokol
-// owns the winproc, so the window is subclassed and only this one message is intercepted;
-// everything else is forwarded untouched.
-//
-// sokol_app is single-window, so one static original-winproc slot is sufficient.
-static WNDPROC _zinc_orig_wndproc = NULL;
+// WS_EX_LAYERED normally wants SetLayeredWindowAttributes to define how the window is
+// composited, so we set fully-opaque alpha; on a DirectComposition window the visual
+// content still comes from the swapchain. NOTE the open question: WS_EX_LAYERED is the
+// legacy GDI compositing path and may not coexist with the WS_EX_NOREDIRECTIONBITMAP a
+// composited window carries. If a transparent window goes blank when click-through is
+// enabled, that is this conflict, and click-through is then opaque-mode only.
 static BOOL _zinc_click_through = FALSE;
-
-static LRESULT CALLBACK _zinc_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
-    if (_zinc_click_through && (msg == WM_NCHITTEST)) {
-        // the whole window, client area included, is transparent to the mouse
-        return HTTRANSPARENT;
-    }
-    return CallWindowProcW(_zinc_orig_wndproc, hwnd, msg, wp, lp);
-}
 
 ZINC_EXPORT int32_t zinc_window_set_click_through(void* handle, int32_t enable) {
     HWND hwnd = (HWND)handle;
     if (!IsWindow(hwnd)) { return 0; }
 
-    if (enable && (NULL == _zinc_orig_wndproc)) {
-        _zinc_orig_wndproc = (WNDPROC)(LONG_PTR)SetWindowLongPtrW(hwnd, GWLP_WNDPROC, (LONG_PTR)_zinc_wndproc);
-        if (NULL == _zinc_orig_wndproc) { return 0; }
-    }
-    _zinc_click_through = enable ? TRUE : FALSE;
-
-    // Also flip WS_EX_TRANSPARENT. It isn't sufficient on its own, but it is the correct
-    // hint for a non-composited window and costs nothing here.
     LONG_PTR ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
     if (enable) {
-        ex_style |= WS_EX_TRANSPARENT;
+        ex_style |= (WS_EX_LAYERED | WS_EX_TRANSPARENT);
     } else {
-        ex_style &= ~(LONG_PTR)WS_EX_TRANSPARENT;
+        ex_style &= ~(LONG_PTR)(WS_EX_LAYERED | WS_EX_TRANSPARENT);
     }
     SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex_style);
+
+    if (enable) {
+        // fully opaque: the layered flag is here for hit-testing, not to fade the window
+        SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
+    }
+    _zinc_click_through = enable ? TRUE : FALSE;
     return 1;
 }
 
-// Undo the subclass. Worth calling before the process tears down: if zinc_platform were
-// ever unloaded while the window still pointed at _zinc_wndproc, the next message would
-// jump into freed code.
+// Retained so the managed API keeps its shape; the WM_NCHITTEST subclass this used to undo
+// is gone (it only ever worked within one thread). Nothing to restore.
 ZINC_EXPORT int32_t zinc_window_restore_wndproc(void* handle) {
-    HWND hwnd = (HWND)handle;
-    if (!IsWindow(hwnd) || (NULL == _zinc_orig_wndproc)) { return 0; }
-    SetWindowLongPtrW(hwnd, GWLP_WNDPROC, (LONG_PTR)_zinc_orig_wndproc);
-    _zinc_orig_wndproc = NULL;
-    _zinc_click_through = FALSE;
+    (void)handle;
     return 1;
 }
 
