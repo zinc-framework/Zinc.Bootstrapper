@@ -129,6 +129,48 @@ ZINC_EXPORT int32_t zinc_window_set_position(void* handle, int32_t x, int32_t y)
     return 1;
 }
 
+// The window's outer frame on the desktop, in points with a top-left origin -- flipped through
+// the primary screen the same way zinc_window_set_position does, so the two round-trip.
+ZINC_EXPORT int32_t zinc_window_get_bounds(void* handle, int32_t* x, int32_t* y, int32_t* w, int32_t* h) {
+    NSWindow* win = (__bridge NSWindow*)handle;
+    if (win == nil) { return 0; }
+    NSArray<NSScreen*>* screens = [NSScreen screens];
+    if (screens.count == 0) { return 0; }
+    const CGFloat primary_h = screens[0].frame.size.height;
+    const NSRect frame = win.frame;
+    if (x) { *x = (int32_t)frame.origin.x; }
+    if (y) { *y = (int32_t)(primary_h - frame.origin.y - frame.size.height); }
+    if (w) { *w = (int32_t)frame.size.width; }
+    if (h) { *h = (int32_t)frame.size.height; }
+    return 1;
+}
+
+// The drawable area, in points. On macOS the content view is already the whole window for a
+// borderless-styled companion, but it still differs from the frame whenever a title bar exists.
+ZINC_EXPORT int32_t zinc_window_get_client_size(void* handle, int32_t* w, int32_t* h) {
+    NSWindow* win = (__bridge NSWindow*)handle;
+    if (win == nil) { return 0; }
+    const NSRect content = [win contentRectForFrameRect:win.frame];
+    if (w) { *w = (int32_t)content.size.width; }
+    if (h) { *h = (int32_t)content.size.height; }
+    return 1;
+}
+
+// Resize so the content area is exactly w x h points, keeping the window's TOP-left corner put.
+// -setContentSize: would anchor the bottom-left instead (Cocoa's origin), which reads as the
+// window jumping upward; recomputing the frame keeps the behaviour matching the Windows side.
+ZINC_EXPORT int32_t zinc_window_set_client_size(void* handle, int32_t w, int32_t h) {
+    NSWindow* win = (__bridge NSWindow*)handle;
+    if (win == nil) { return 0; }
+    if (w <= 0 || h <= 0) { return 0; }
+
+    const NSRect content = [win contentRectForFrameRect:win.frame];
+    const CGFloat delta_h = (CGFloat)h - content.size.height;
+    const NSRect want_content = NSMakeRect(content.origin.x, content.origin.y - delta_h, (CGFloat)w, (CGFloat)h);
+    [win setFrame:[win frameRectForContentRect:want_content] display:YES];
+    return 1;
+}
+
 ZINC_EXPORT int32_t zinc_window_get_work_area(void* handle, int32_t* x, int32_t* y, int32_t* w, int32_t* h) {
     NSWindow* win = (__bridge NSWindow*)handle;
     if (win == nil) { return 0; }

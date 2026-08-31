@@ -214,6 +214,62 @@ ZINC_EXPORT int32_t zinc_window_set_position(void* handle, int32_t x, int32_t y)
     return 1;
 }
 
+// The window's outer rect on the desktop, in physical pixels with a top-left origin -- the
+// same coordinate space zinc_window_set_position takes and zinc_window_get_work_area reports,
+// so the three compose without conversions. Reading back what set_position set is what lets an
+// app work out where it sits relative to the screen edges.
+ZINC_EXPORT int32_t zinc_window_get_bounds(void* handle, int32_t* x, int32_t* y, int32_t* w, int32_t* h) {
+    HWND hwnd = (HWND)handle;
+    if (!IsWindow(hwnd)) { return 0; }
+    RECT r;
+    if (!GetWindowRect(hwnd, &r)) { return 0; }
+    if (x) { *x = (int32_t)r.left; }
+    if (y) { *y = (int32_t)r.top; }
+    if (w) { *w = (int32_t)(r.right - r.left); }
+    if (h) { *h = (int32_t)(r.bottom - r.top); }
+    return 1;
+}
+
+// The drawable area, physical pixels. Differs from the outer rect by whatever frame the current
+// style carries -- nothing at all for a borderless window, a caption plus borders otherwise.
+ZINC_EXPORT int32_t zinc_window_get_client_size(void* handle, int32_t* w, int32_t* h) {
+    HWND hwnd = (HWND)handle;
+    if (!IsWindow(hwnd)) { return 0; }
+    RECT r;
+    if (!GetClientRect(hwnd, &r)) { return 0; }
+    if (w) { *w = (int32_t)(r.right - r.left); }
+    if (h) { *h = (int32_t)(r.bottom - r.top); }
+    return 1;
+}
+
+// Resize so the CLIENT area is exactly w x h physical pixels, leaving the window where it is.
+// Sizing by client rather than by outer rect is the useful contract: the client area is what
+// gets rendered, so this is the one measurement that doesn't silently change meaning when the
+// frame comes and goes. AdjustWindowRectEx reads the live style, so the same call is correct
+// for a borderless window and a decorated one.
+//
+// This is what makes sokol's fullscreen round-trippable for a borderless window. sokol stores
+// the OUTER rect on the way in and restores it with the decorated style on the way out, so a
+// window whose outer rect had no frame to begin with comes back with its client area shrunk by
+// exactly the frame that was just re-added. Restating the client size afterwards undoes that;
+// for a decorated window sokol already got it right and this is a no-op.
+ZINC_EXPORT int32_t zinc_window_set_client_size(void* handle, int32_t w, int32_t h) {
+    HWND hwnd = (HWND)handle;
+    if (!IsWindow(hwnd)) { return 0; }
+    if (w <= 0 || h <= 0) { return 0; }
+
+    RECT want = { 0, 0, (LONG)w, (LONG)h };
+    const LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+    const LONG_PTR ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+    AdjustWindowRectEx(&want, (DWORD)style, FALSE, (DWORD)ex_style);
+
+    SetWindowPos(hwnd, NULL, 0, 0,
+        want.right - want.left,
+        want.bottom - want.top,
+        SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    return 1;
+}
+
 // Usable desktop area (excludes the taskbar) of the monitor the window is on, in physical
 // pixels. Lets a companion park itself in a corner without guessing at screen metrics.
 ZINC_EXPORT int32_t zinc_window_get_work_area(void* handle, int32_t* x, int32_t* y, int32_t* w, int32_t* h) {
@@ -246,6 +302,15 @@ ZINC_EXPORT int32_t zinc_window_get_work_area(void* handle, int32_t* x, int32_t*
 }
 ZINC_EXPORT int32_t zinc_window_get_cursor_pos(void* handle, int32_t* x, int32_t* y, int32_t* client_w, int32_t* client_h) {
     (void)handle; (void)x; (void)y; (void)client_w; (void)client_h; return 0;
+}
+ZINC_EXPORT int32_t zinc_window_get_bounds(void* handle, int32_t* x, int32_t* y, int32_t* w, int32_t* h) {
+    (void)handle; (void)x; (void)y; (void)w; (void)h; return 0;
+}
+ZINC_EXPORT int32_t zinc_window_get_client_size(void* handle, int32_t* w, int32_t* h) {
+    (void)handle; (void)w; (void)h; return 0;
+}
+ZINC_EXPORT int32_t zinc_window_set_client_size(void* handle, int32_t w, int32_t h) {
+    (void)handle; (void)w; (void)h; return 0;
 }
 
 #endif // _WIN32 / !__APPLE__
