@@ -113,6 +113,19 @@ ZINC_EXPORT int32_t zinc_window_begin_drag(void* handle) {
     // the button is currently down and captured by our client area; hand it to the frame
     ReleaseCapture();
     SendMessageW(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+
+    // SendMessageW only returns once the modal move loop has ended -- and that loop consumed
+    // the button release that ended the drag, so the app never sees WM_LBUTTONUP. Left alone,
+    // its input layer believes the left button is held for the rest of the process's life:
+    // every later hover reads as a mouse-down, which for the drag handler that called us
+    // means the drag re-arms itself on every hover. Synthesize the release the loop ate.
+    // sokol's wndproc turns WM_LBUTTONUP into SAPP_EVENTTYPE_MOUSE_UP through its ordinary
+    // path without consulting physical button state, so the app just sees a normal release.
+    POINT release_at;
+    if (GetCursorPos(&release_at) && ScreenToClient(hwnd, &release_at)) {
+        PostMessageW(hwnd, WM_LBUTTONUP, 0,
+            MAKELPARAM((WORD)(short)release_at.x, (WORD)(short)release_at.y));
+    }
     return 1;
 }
 
@@ -153,6 +166,36 @@ ZINC_EXPORT int32_t zinc_window_set_click_through(void* handle, int32_t enable) 
         SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
     }
     _zinc_click_through = enable ? TRUE : FALSE;
+    return 1;
+}
+
+// Where the mouse is right now, asked of the OS rather than of the window: client-relative,
+// top-left origin. Also reports the client size, because the two only mean anything together
+// -- the caller needs the ratio to map this into whatever coordinate space its input events
+// use, and getting both from one call keeps that conversion free of a second platform query.
+// Units are physical pixels here; the macOS counterpart reports points. Either way the ratio
+// against the client size is what the managed side actually consumes.
+//
+// This exists because a click-through window receives no mouse messages AT ALL, so the event
+// stream freezes exactly when an app most needs to know whether the cursor has come back:
+// the callback that would turn click-through off again can never fire off frozen coordinates.
+// Being a global query it is also immune to another window covering ours -- which cuts both
+// ways, since it cannot tell an occluded cursor from one over our own content.
+ZINC_EXPORT int32_t zinc_window_get_cursor_pos(void* handle, int32_t* x, int32_t* y, int32_t* client_w, int32_t* client_h) {
+    HWND hwnd = (HWND)handle;
+    if (!IsWindow(hwnd)) { return 0; }
+
+    POINT p;
+    if (!GetCursorPos(&p)) { return 0; }
+    if (!ScreenToClient(hwnd, &p)) { return 0; }
+
+    RECT client;
+    if (!GetClientRect(hwnd, &client)) { return 0; }
+
+    if (x) { *x = (int32_t)p.x; }
+    if (y) { *y = (int32_t)p.y; }
+    if (client_w) { *client_w = (int32_t)(client.right - client.left); }
+    if (client_h) { *client_h = (int32_t)(client.bottom - client.top); }
     return 1;
 }
 
@@ -200,6 +243,9 @@ ZINC_EXPORT int32_t zinc_window_restore_wndproc(void* handle) { (void)handle; re
 ZINC_EXPORT int32_t zinc_window_set_position(void* handle, int32_t x, int32_t y) { (void)handle; (void)x; (void)y; return 0; }
 ZINC_EXPORT int32_t zinc_window_get_work_area(void* handle, int32_t* x, int32_t* y, int32_t* w, int32_t* h) {
     (void)handle; (void)x; (void)y; (void)w; (void)h; return 0;
+}
+ZINC_EXPORT int32_t zinc_window_get_cursor_pos(void* handle, int32_t* x, int32_t* y, int32_t* client_w, int32_t* client_h) {
+    (void)handle; (void)x; (void)y; (void)client_w; (void)client_h; return 0;
 }
 
 #endif // _WIN32 / !__APPLE__

@@ -76,6 +76,38 @@ ZINC_EXPORT int32_t zinc_window_set_click_through(void* handle, int32_t enable) 
     return 1;
 }
 
+// Where the mouse is right now, asked of AppKit rather than of the window: content-relative,
+// top-left origin, plus the content size so the caller has the ratio it needs to map this
+// into its own input coordinate space. Points here, not backing pixels -- the same units the
+// content size is reported in, which is all the conversion depends on.
+//
+// +[NSEvent mouseLocation] is a global query, so unlike the event stream it keeps answering
+// while ignoresMouseEvents is on. Without it a click-through window can never observe the
+// cursor returning, and the callback that would clear ignoresMouseEvents never runs.
+//
+// STATUS: written against documented AppKit behaviour, NOT run on hardware -- same caveat as
+// the rest of this file.
+ZINC_EXPORT int32_t zinc_window_get_cursor_pos(void* handle, int32_t* x, int32_t* y, int32_t* client_w, int32_t* client_h) {
+    NSWindow* win = (__bridge NSWindow*)handle;
+    if (win == nil) { return 0; }
+    NSView* view = win.contentView;
+    if (view == nil) { return 0; }
+
+    // screen -> window -> view, via the rect form of the conversion (the point form is only
+    // available from macOS 10.12, and this costs nothing extra)
+    const NSPoint screen_pt = [NSEvent mouseLocation];
+    const NSPoint win_pt = [win convertRectFromScreen:NSMakeRect(screen_pt.x, screen_pt.y, 0.0, 0.0)].origin;
+    const NSPoint view_pt = [view convertPoint:win_pt fromView:nil];
+    const NSRect bounds = view.bounds;
+
+    // Cocoa's content origin is bottom-left; Zinc (and the Windows side) speak top-left.
+    if (x) { *x = (int32_t)view_pt.x; }
+    if (y) { *y = (int32_t)(bounds.size.height - view_pt.y); }
+    if (client_w) { *client_w = (int32_t)bounds.size.width; }
+    if (client_h) { *client_h = (int32_t)bounds.size.height; }
+    return 1;
+}
+
 // No subclassing needed on macOS: ignoresMouseEvents above is the whole mechanism, so
 // there is no winproc to restore. Present for API symmetry with the Windows side.
 ZINC_EXPORT int32_t zinc_window_restore_wndproc(void* handle) {
