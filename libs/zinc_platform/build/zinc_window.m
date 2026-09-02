@@ -30,12 +30,12 @@ ZINC_EXPORT int32_t zinc_window_set_borderless(void* handle, int32_t borderless)
     if (borderless) {
         win.styleMask |= NSWindowStyleMaskFullSizeContentView;
         win.titlebarAppearsTransparent = YES;
-        win.titleVisibility = NSWindowTitleVisibilityHidden;
+        win.titleVisibility = NSWindowTitleHidden;
         win.movableByWindowBackground = YES;
     } else {
         win.styleMask &= ~NSWindowStyleMaskFullSizeContentView;
         win.titlebarAppearsTransparent = NO;
-        win.titleVisibility = NSWindowTitleVisibilityVisible;
+        win.titleVisibility = NSWindowTitleVisible;
         win.movableByWindowBackground = NO;
     }
     const BOOL hide = borderless ? YES : NO;
