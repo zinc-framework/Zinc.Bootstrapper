@@ -49,6 +49,7 @@ pub fn build(b: *Build) void {
         mod.linkFramework("Foundation", .{});
         mod.linkFramework("QuartzCore", .{});
         mod.linkFramework("Cocoa", .{});
+        mod.linkFramework("CoreGraphics", .{}); // CGEventSourceKeyState in zinc_window.m
     } else {
         mod.addCSourceFile(.{ .file = b.path("screenshot_other.c"), .flags = &c_flags });
         mod.addCSourceFile(.{ .file = b.path("zinc_window.c"), .flags = &c_flags });

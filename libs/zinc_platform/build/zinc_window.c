@@ -19,11 +19,15 @@
 
 #include <stdint.h>
 #include "../../zinc_export.h"
+// Declarations only (no SOKOL_IMPL): we speak sokol keycodes so the managed side needs no
+// per-platform key table. zinc_platform never links against the sokol DLL for this.
+#include "../../sokol/src/sokol/sokol_app.h"
 
 #if defined(_WIN32)
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <string.h>
 
 // Style bits that make up a normal decorated window frame.
 #define ZINC_DECORATION_BITS (WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU)
@@ -286,6 +290,60 @@ ZINC_EXPORT int32_t zinc_window_get_work_area(void* handle, int32_t* x, int32_t*
     return 1;
 }
 
+// Which keys are physically down right now, asked of the OS rather than of the window, one
+// byte per sokol keycode (index = SAPP_KEYCODE_*, 1 = down). Keyboard messages only reach
+// the foreground window and a click-through window can't be clicked to become one, so once
+// the user touches another app sokol's KEY_DOWN/KEY_UP stop for good; this is the keyboard
+// twin of zinc_window_get_cursor_pos. Sokol's own win32 table is keyed by scancode, so this
+// carries its own virtual-key table (the same pairing GLFW uses). KP_ENTER and KP_EQUAL have
+// no dedicated virtual-key and are never reported. `count` is how many bytes out_down holds;
+// anything past it is skipped, anything unmapped is left 0.
+static const struct { uint16_t vk; uint16_t key; } _zinc_win32_keys[] = {
+    { 0x20, SAPP_KEYCODE_SPACE },        { 0xDE, SAPP_KEYCODE_APOSTROPHE },
+    { 0xBC, SAPP_KEYCODE_COMMA },        { 0xBD, SAPP_KEYCODE_MINUS },
+    { 0xBE, SAPP_KEYCODE_PERIOD },       { 0xBF, SAPP_KEYCODE_SLASH },
+    { 0xBA, SAPP_KEYCODE_SEMICOLON },    { 0xBB, SAPP_KEYCODE_EQUAL },
+    { 0xDB, SAPP_KEYCODE_LEFT_BRACKET }, { 0xDC, SAPP_KEYCODE_BACKSLASH },
+    { 0xDD, SAPP_KEYCODE_RIGHT_BRACKET },{ 0xC0, SAPP_KEYCODE_GRAVE_ACCENT },
+    { 0xE2, SAPP_KEYCODE_WORLD_2 },
+    { 0x1B, SAPP_KEYCODE_ESCAPE },       { 0x0D, SAPP_KEYCODE_ENTER },
+    { 0x09, SAPP_KEYCODE_TAB },          { 0x08, SAPP_KEYCODE_BACKSPACE },
+    { 0x2D, SAPP_KEYCODE_INSERT },       { 0x2E, SAPP_KEYCODE_DELETE },
+    { 0x27, SAPP_KEYCODE_RIGHT },        { 0x25, SAPP_KEYCODE_LEFT },
+    { 0x28, SAPP_KEYCODE_DOWN },         { 0x26, SAPP_KEYCODE_UP },
+    { 0x21, SAPP_KEYCODE_PAGE_UP },      { 0x22, SAPP_KEYCODE_PAGE_DOWN },
+    { 0x24, SAPP_KEYCODE_HOME },         { 0x23, SAPP_KEYCODE_END },
+    { 0x14, SAPP_KEYCODE_CAPS_LOCK },    { 0x91, SAPP_KEYCODE_SCROLL_LOCK },
+    { 0x90, SAPP_KEYCODE_NUM_LOCK },     { 0x2C, SAPP_KEYCODE_PRINT_SCREEN },
+    { 0x13, SAPP_KEYCODE_PAUSE },
+    { 0x6E, SAPP_KEYCODE_KP_DECIMAL },   { 0x6F, SAPP_KEYCODE_KP_DIVIDE },
+    { 0x6A, SAPP_KEYCODE_KP_MULTIPLY },  { 0x6D, SAPP_KEYCODE_KP_SUBTRACT },
+    { 0x6B, SAPP_KEYCODE_KP_ADD },
+    { 0xA0, SAPP_KEYCODE_LEFT_SHIFT },   { 0xA2, SAPP_KEYCODE_LEFT_CONTROL },
+    { 0xA4, SAPP_KEYCODE_LEFT_ALT },     { 0x5B, SAPP_KEYCODE_LEFT_SUPER },
+    { 0xA1, SAPP_KEYCODE_RIGHT_SHIFT },  { 0xA3, SAPP_KEYCODE_RIGHT_CONTROL },
+    { 0xA5, SAPP_KEYCODE_RIGHT_ALT },    { 0x5C, SAPP_KEYCODE_RIGHT_SUPER },
+    { 0x5D, SAPP_KEYCODE_MENU },
+};
+
+static void _zinc_win32_key_down(uint8_t* out_down, int32_t count, int vk, int key) {
+    if (key < 0 || key >= count) { return; }
+    out_down[key] = (GetAsyncKeyState(vk) & 0x8000) ? 1 : 0;
+}
+
+ZINC_EXPORT int32_t zinc_window_get_keys_down(uint8_t* out_down, int32_t count) {
+    if (!out_down || count <= 0) { return 0; }
+    memset(out_down, 0, (size_t)count);
+    for (int i = 0; i < 26; i++) { _zinc_win32_key_down(out_down, count, 0x41 + i, SAPP_KEYCODE_A + i); }
+    for (int i = 0; i < 10; i++) { _zinc_win32_key_down(out_down, count, 0x30 + i, SAPP_KEYCODE_0 + i); }
+    for (int i = 0; i < 24; i++) { _zinc_win32_key_down(out_down, count, 0x70 + i, SAPP_KEYCODE_F1 + i); }
+    for (int i = 0; i < 10; i++) { _zinc_win32_key_down(out_down, count, 0x60 + i, SAPP_KEYCODE_KP_0 + i); }
+    for (size_t i = 0; i < sizeof(_zinc_win32_keys) / sizeof(_zinc_win32_keys[0]); i++) {
+        _zinc_win32_key_down(out_down, count, _zinc_win32_keys[i].vk, _zinc_win32_keys[i].key);
+    }
+    return 1;
+}
+
 #elif !defined(__APPLE__)
 
 // Non-Windows, non-Apple (Linux/X11/Wayland): not implemented yet. Stubs return 0 so the
@@ -311,6 +369,9 @@ ZINC_EXPORT int32_t zinc_window_get_client_size(void* handle, int32_t* w, int32_
 }
 ZINC_EXPORT int32_t zinc_window_set_client_size(void* handle, int32_t w, int32_t h) {
     (void)handle; (void)w; (void)h; return 0;
+}
+ZINC_EXPORT int32_t zinc_window_get_keys_down(uint8_t* out_down, int32_t count) {
+    (void)out_down; (void)count; return 0;
 }
 
 #endif // _WIN32 / !__APPLE__

@@ -17,11 +17,15 @@
 // identical, no input trade-off.
 
 #include <stdint.h>
+#include <string.h>
 #include "../../zinc_export.h"
+// Declarations only (no SOKOL_IMPL): key state is reported by sokol keycode, see zinc_window.c.
+#include "../../sokol/src/sokol/sokol_app.h"
 
 #if defined(__APPLE__)
 
 #import <Cocoa/Cocoa.h>
+#import <CoreGraphics/CoreGraphics.h>
 
 ZINC_EXPORT int32_t zinc_window_set_borderless(void* handle, int32_t borderless) {
     NSWindow* win = (__bridge NSWindow*)handle;
@@ -184,6 +188,65 @@ ZINC_EXPORT int32_t zinc_window_get_work_area(void* handle, int32_t* x, int32_t*
     if (y) { *y = (int32_t)(primary_h - vf.origin.y - vf.size.height); }
     if (w) { *w = (int32_t)vf.size.width; }
     if (h) { *h = (int32_t)vf.size.height; }
+    return 1;
+}
+
+// Which keys are physically down right now, one byte per sokol keycode -- see zinc_window.c
+// for why. A window with ignoresMouseEvents can't be clicked to activate the app, so once the
+// user touches anything else -keyDown: stops arriving; +[NSEvent addGlobalMonitorForEvents]
+// would answer but needs Input Monitoring approval. CGEventSourceKeyState reads the session's
+// combined key state directly and, as far as the documentation goes, is not gated behind that
+// permission. The table is sokol's own macOS one (kVK_* virtual keycodes), which is exactly
+// what CGEventSourceKeyState takes.
+//
+// STATUS: written against documented behaviour, NOT run on hardware -- same caveat as the
+// rest of this file. If the OS does prompt for Input Monitoring, this is the call doing it.
+static const struct { uint16_t kvk; uint16_t key; } _zinc_macos_keys[] = {
+    { 0x1D, SAPP_KEYCODE_0 }, { 0x12, SAPP_KEYCODE_1 }, { 0x13, SAPP_KEYCODE_2 }, { 0x14, SAPP_KEYCODE_3 },
+    { 0x15, SAPP_KEYCODE_4 }, { 0x17, SAPP_KEYCODE_5 }, { 0x16, SAPP_KEYCODE_6 }, { 0x1A, SAPP_KEYCODE_7 },
+    { 0x1C, SAPP_KEYCODE_8 }, { 0x19, SAPP_KEYCODE_9 },
+    { 0x00, SAPP_KEYCODE_A }, { 0x0B, SAPP_KEYCODE_B }, { 0x08, SAPP_KEYCODE_C }, { 0x02, SAPP_KEYCODE_D },
+    { 0x0E, SAPP_KEYCODE_E }, { 0x03, SAPP_KEYCODE_F }, { 0x05, SAPP_KEYCODE_G }, { 0x04, SAPP_KEYCODE_H },
+    { 0x22, SAPP_KEYCODE_I }, { 0x26, SAPP_KEYCODE_J }, { 0x28, SAPP_KEYCODE_K }, { 0x25, SAPP_KEYCODE_L },
+    { 0x2E, SAPP_KEYCODE_M }, { 0x2D, SAPP_KEYCODE_N }, { 0x1F, SAPP_KEYCODE_O }, { 0x23, SAPP_KEYCODE_P },
+    { 0x0C, SAPP_KEYCODE_Q }, { 0x0F, SAPP_KEYCODE_R }, { 0x01, SAPP_KEYCODE_S }, { 0x11, SAPP_KEYCODE_T },
+    { 0x20, SAPP_KEYCODE_U }, { 0x09, SAPP_KEYCODE_V }, { 0x0D, SAPP_KEYCODE_W }, { 0x07, SAPP_KEYCODE_X },
+    { 0x10, SAPP_KEYCODE_Y }, { 0x06, SAPP_KEYCODE_Z },
+    { 0x27, SAPP_KEYCODE_APOSTROPHE }, { 0x2A, SAPP_KEYCODE_BACKSLASH }, { 0x2B, SAPP_KEYCODE_COMMA },
+    { 0x18, SAPP_KEYCODE_EQUAL }, { 0x32, SAPP_KEYCODE_GRAVE_ACCENT }, { 0x21, SAPP_KEYCODE_LEFT_BRACKET },
+    { 0x1B, SAPP_KEYCODE_MINUS }, { 0x2F, SAPP_KEYCODE_PERIOD }, { 0x1E, SAPP_KEYCODE_RIGHT_BRACKET },
+    { 0x29, SAPP_KEYCODE_SEMICOLON }, { 0x2C, SAPP_KEYCODE_SLASH }, { 0x0A, SAPP_KEYCODE_WORLD_1 },
+    { 0x33, SAPP_KEYCODE_BACKSPACE }, { 0x39, SAPP_KEYCODE_CAPS_LOCK }, { 0x75, SAPP_KEYCODE_DELETE },
+    { 0x7D, SAPP_KEYCODE_DOWN }, { 0x77, SAPP_KEYCODE_END }, { 0x24, SAPP_KEYCODE_ENTER },
+    { 0x35, SAPP_KEYCODE_ESCAPE },
+    { 0x7A, SAPP_KEYCODE_F1 }, { 0x78, SAPP_KEYCODE_F2 }, { 0x63, SAPP_KEYCODE_F3 }, { 0x76, SAPP_KEYCODE_F4 },
+    { 0x60, SAPP_KEYCODE_F5 }, { 0x61, SAPP_KEYCODE_F6 }, { 0x62, SAPP_KEYCODE_F7 }, { 0x64, SAPP_KEYCODE_F8 },
+    { 0x65, SAPP_KEYCODE_F9 }, { 0x6D, SAPP_KEYCODE_F10 }, { 0x67, SAPP_KEYCODE_F11 }, { 0x6F, SAPP_KEYCODE_F12 },
+    { 0x69, SAPP_KEYCODE_F13 }, { 0x6B, SAPP_KEYCODE_F14 }, { 0x71, SAPP_KEYCODE_F15 }, { 0x6A, SAPP_KEYCODE_F16 },
+    { 0x40, SAPP_KEYCODE_F17 }, { 0x4F, SAPP_KEYCODE_F18 }, { 0x50, SAPP_KEYCODE_F19 }, { 0x5A, SAPP_KEYCODE_F20 },
+    { 0x73, SAPP_KEYCODE_HOME }, { 0x72, SAPP_KEYCODE_INSERT }, { 0x7B, SAPP_KEYCODE_LEFT },
+    { 0x3A, SAPP_KEYCODE_LEFT_ALT }, { 0x3B, SAPP_KEYCODE_LEFT_CONTROL }, { 0x38, SAPP_KEYCODE_LEFT_SHIFT },
+    { 0x37, SAPP_KEYCODE_LEFT_SUPER }, { 0x6E, SAPP_KEYCODE_MENU }, { 0x47, SAPP_KEYCODE_NUM_LOCK },
+    { 0x79, SAPP_KEYCODE_PAGE_DOWN }, { 0x74, SAPP_KEYCODE_PAGE_UP }, { 0x7C, SAPP_KEYCODE_RIGHT },
+    { 0x3D, SAPP_KEYCODE_RIGHT_ALT }, { 0x3E, SAPP_KEYCODE_RIGHT_CONTROL }, { 0x3C, SAPP_KEYCODE_RIGHT_SHIFT },
+    { 0x36, SAPP_KEYCODE_RIGHT_SUPER }, { 0x31, SAPP_KEYCODE_SPACE }, { 0x30, SAPP_KEYCODE_TAB },
+    { 0x7E, SAPP_KEYCODE_UP },
+    { 0x52, SAPP_KEYCODE_KP_0 }, { 0x53, SAPP_KEYCODE_KP_1 }, { 0x54, SAPP_KEYCODE_KP_2 }, { 0x55, SAPP_KEYCODE_KP_3 },
+    { 0x56, SAPP_KEYCODE_KP_4 }, { 0x57, SAPP_KEYCODE_KP_5 }, { 0x58, SAPP_KEYCODE_KP_6 }, { 0x59, SAPP_KEYCODE_KP_7 },
+    { 0x5B, SAPP_KEYCODE_KP_8 }, { 0x5C, SAPP_KEYCODE_KP_9 },
+    { 0x45, SAPP_KEYCODE_KP_ADD }, { 0x41, SAPP_KEYCODE_KP_DECIMAL }, { 0x4B, SAPP_KEYCODE_KP_DIVIDE },
+    { 0x4C, SAPP_KEYCODE_KP_ENTER }, { 0x51, SAPP_KEYCODE_KP_EQUAL }, { 0x43, SAPP_KEYCODE_KP_MULTIPLY },
+    { 0x4E, SAPP_KEYCODE_KP_SUBTRACT },
+};
+
+ZINC_EXPORT int32_t zinc_window_get_keys_down(uint8_t* out_down, int32_t count) {
+    if (!out_down || count <= 0) { return 0; }
+    memset(out_down, 0, (size_t)count);
+    for (size_t i = 0; i < sizeof(_zinc_macos_keys) / sizeof(_zinc_macos_keys[0]); i++) {
+        const int key = _zinc_macos_keys[i].key;
+        if (key < 0 || key >= count) { continue; }
+        out_down[key] = CGEventSourceKeyState(kCGEventSourceStateCombinedSessionState, (CGKeyCode)_zinc_macos_keys[i].kvk) ? 1 : 0;
+    }
     return 1;
 }
 
