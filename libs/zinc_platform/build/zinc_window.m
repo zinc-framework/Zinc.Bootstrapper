@@ -31,16 +31,16 @@ ZINC_EXPORT int32_t zinc_window_set_borderless(void* handle, int32_t borderless)
     NSWindow* win = (__bridge NSWindow*)handle;
     if (win == nil) { return 0; }
 
+    // No movableByWindowBackground here, tempting as it is for a frameless window: see
+    // zinc_window_begin_drag for what it does to a transparent one.
     if (borderless) {
         win.styleMask |= NSWindowStyleMaskFullSizeContentView;
         win.titlebarAppearsTransparent = YES;
         win.titleVisibility = NSWindowTitleHidden;
-        win.movableByWindowBackground = YES;
     } else {
         win.styleMask &= ~NSWindowStyleMaskFullSizeContentView;
         win.titlebarAppearsTransparent = NO;
         win.titleVisibility = NSWindowTitleVisible;
-        win.movableByWindowBackground = NO;
     }
     const BOOL hide = borderless ? YES : NO;
     [win standardWindowButton:NSWindowCloseButton].hidden = hide;
@@ -64,13 +64,45 @@ ZINC_EXPORT int32_t zinc_window_set_taskbar_visible(void* handle, int32_t visibl
     return 0;
 }
 
-// movableByWindowBackground (set by set_borderless above) already lets AppKit drag the
-// window from anywhere in the content, so there is no explicit drag to begin. Returning 1
-// keeps the managed API's contract: "the platform is handling the drag".
+// Drag the window by its content, on request -- the app decides where a drag starts, same as
+// on Windows.
+//
+// NOT movableByWindowBackground, which is a standing policy rather than a request: AppKit drags
+// the window on every mouse-down that lands on a view whose -mouseDownCanMoveWindow is YES, and
+// NSView answers YES whenever it isn't opaque -- which sokol's view never is in a transparent
+// window. So in exactly the desktop-companion case, every press on the content dragged the whole
+// window along under the cursor. The app still saw the press, but the mouse never moved relative
+// to the window, so whatever it was dragging went nowhere and was let go with no velocity, while
+// the window itself wandered off the screen. (In an opaque window it did nothing at all.)
+//
+// So the drag is done by hand: a local monitor follows the held button and moves the window by
+// however far the mouse has gone, until the release. Unlike the Windows move loop this doesn't
+// block, so frames keep coming the ordinary way, and the release still reaches sokol as a normal
+// mouse-up -- there's no swallowed button-up to put back.
+static id _zinc_drag_monitor = nil;
+
 ZINC_EXPORT int32_t zinc_window_begin_drag(void* handle) {
     NSWindow* win = (__bridge NSWindow*)handle;
     if (win == nil) { return 0; }
-    return win.movableByWindowBackground ? 1 : 0;
+    if (_zinc_drag_monitor != nil) { return 1; } // already following the mouse
+    // deferred to the end of the frame by the managed side, so a quick click can be over by now
+    if (([NSEvent pressedMouseButtons] & 1) == 0) { return 0; }
+
+    // screen coordinates throughout, which is also what the frame origin is in
+    const NSPoint grab = [NSEvent mouseLocation];
+    const NSPoint origin = win.frame.origin;
+    __weak NSWindow* weak_win = win;
+    _zinc_drag_monitor = [NSEvent addLocalMonitorForEventsMatchingMask:(NSEventMaskLeftMouseDragged | NSEventMaskLeftMouseUp)
+                                                               handler:^NSEvent*(NSEvent* event) {
+        const NSPoint now = [NSEvent mouseLocation];
+        [weak_win setFrameOrigin:NSMakePoint(origin.x + (now.x - grab.x), origin.y + (now.y - grab.y))];
+        if (event.type == NSEventTypeLeftMouseUp) {
+            [NSEvent removeMonitor:_zinc_drag_monitor];
+            _zinc_drag_monitor = nil;
+        }
+        return event;
+    }];
+    return 1;
 }
 
 ZINC_EXPORT int32_t zinc_window_set_click_through(void* handle, int32_t enable) {
