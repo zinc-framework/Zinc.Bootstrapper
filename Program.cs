@@ -315,13 +315,28 @@ Console.WriteLine($"ZigExePath: {ZigExePath}");
 Console.WriteLine($"ZigLibPath: {ZigLibPath}");
 Console.WriteLine($"ZigDocPath: {ZigDocPath}");
 
+// Every lib is built twice, and Zinc.csproj picks one by the game's build configuration:
+//   Debug -> out/libs/runtimes-debug/: sokol validation and asserts, UBSan, and the D3D11 debug
+//            layer on machines that have Windows' Graphics Tools installed.
+//   ReleaseFast -> out/libs/runtimes/: what ships. ReleaseSafe would not do: only ReleaseFast and
+//            ReleaseSmall define NDEBUG, and sokol switches SOKOL_DEBUG on whenever NDEBUG is missing.
+// -Dcpu pins a baseline CPU. zig's default is the build machine's own CPU, which on the Windows box
+// put AVX2 and FMA into every lib: a crash on any player's CPU without them. x86-64-v2 is the
+// floor .NET itself needs; Apple M1 is the oldest Apple Silicon.
+var zigCpu = OperatingSystem.IsMacOS() ? "apple_m1" : "x86_64_v2";
+string zigBuild(string libName, string optimize) =>
+    $"build -Dfile-path={outputPath} -Dcpu={zigCpu} -Doptimize={optimize} --build-file {buildpath(libName)}";
+
 foreach (var l in buildLibs)
 {
     //sokol - build the lib and bindgen everything
-    //sokol:build - builds the lib
+    //sokol:build - builds the lib, both flavors
+    //sokol:build:debug / sokol:build:release - builds one flavor
     //sokol:bindgen - binds all the libs
     //sokol:bindgen:libname - binds the specified lib
-    Target($"{l.libName}:build", () => Run(ZigExePath,$"build -Dfile-path={outputPath} --build-file {buildpath(l.libName)}"));
+    Target($"{l.libName}:build:debug", () => Run(ZigExePath, zigBuild(l.libName, "Debug")));
+    Target($"{l.libName}:build:release", () => Run(ZigExePath, zigBuild(l.libName, "ReleaseFast")));
+    Target($"{l.libName}:build", DependsOn($"{l.libName}:build:debug", $"{l.libName}:build:release"));
     Target($"{l.libName}:build:wasm", () => Run(ZigExePath,$"build -Dfile-path={outputPath} -Dtarget=wasm32-emscripten --build-file {buildpath(l.libName)}"));
 
     var reqRsps = new List<string>();

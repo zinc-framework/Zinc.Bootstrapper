@@ -20,6 +20,18 @@ Generally there are four options:
 
 See all the options by running `./build --help`
 
+## Native lib builds
+
+`<lib>:build` builds a lib twice, into the Zinc.Libs checkout at `out/libs`:
+
+- `<lib>:build:debug` → `runtimes-debug/<rid>/native/` (zig `Debug`: sokol validation and asserts, UBSan)
+- `<lib>:build:release` → `runtimes/<rid>/native/` (zig `ReleaseFast`, what games ship)
+
+Zinc.csproj picks one by the game's build configuration. Release has to be `ReleaseFast` (or
+`ReleaseSmall`): only those define `NDEBUG`, and sokol turns `SOKOL_DEBUG` on without it. Both are
+built with `-Dcpu` set to a baseline (x86-64-v2 on Windows, Apple M1 on macOS), because zig's
+default targets the build machine's own CPU. Each platform's libs build on that platform.
+
 
 ## Bindings
 
@@ -41,11 +53,11 @@ that workaround is no longer needed.
 
 ## Sokol
 `libs/sokol/src/sokol` points at the [zinc-framework/sokol](https://github.com/zinc-framework/sokol)
-fork, branch `zinc`. As of the Aug-2026 bump that branch carries **no patches** — it is a
-straight mirror of upstream `floooh/sokol` master. The fork stays in place so we have
-somewhere to land a patch if we need one again, not because we currently have one.
+fork, branch `zinc`. It carries one patch: win32 `composite_mode` (transparent windows through
+DirectComposition). `zinc-branch/` inside the submodule documents it and how to re-sync, by
+rebasing so the patch survives.
 
-The patch it used to carry forced `CAMetalLayer.displaySyncEnabled = NO` to work around
+An earlier patch forced `CAMetalLayer.displaySyncEnabled = NO` to work around
 macOS Tahoe input lag (floooh/sokol#1344). It was dropped once upstream shipped the same
 knob as a supported option, `sapp_desc.metal.disable_display_sync`, in the Jul-2026
 swapchain update — consumers that want the old behaviour set that field to `true`.
@@ -55,7 +67,7 @@ To move the fork to a newer upstream, from inside the submodule:
 ```
 git fetch origin                    # origin = floooh/sokol (upstream)
 git checkout zinc
-git reset --hard origin/master      # or rebase, if the branch has patches again
+git rebase origin/master            # replays the composite_mode patch on top
 git push --force-with-lease zinc zinc   # zinc = zinc-framework/sokol (the fork)
 ```
 

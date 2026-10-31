@@ -62,14 +62,18 @@ pub fn build(b: *Build) !void {
         .use_egl = opt_use_egl,
     });
 
-    // redirect install dir to out/libs/runtimes/<rid>/native
+    // redirect install dir to out/libs/runtimes/<rid>/native.
+    // Debug builds land in runtimes-debug/, optimized ones in runtimes/. Zinc.csproj picks
+    // between them by build configuration.
+    const runtimes = if (optimize == .Debug) "/libs/runtimes-debug/" else "/libs/runtimes/";
     const native_dir = std.mem.concat(b.allocator, u8, &.{
         file_path,
-        if (is_wasm) "/libs/runtimes/browser-wasm/native"
-        else if (target_result.os.tag.isDarwin()) "/libs/runtimes/osx-arm64/native"
-        else if (target_result.os.tag == .linux) "/libs/runtimes/linux-x64/native"
-        else if (target_result.os.tag == .windows) "/libs/runtimes/win-x64/native"
-        else "/libs/runtimes/unknown/native",
+        runtimes,
+        if (is_wasm) "browser-wasm/native"
+        else if (target_result.os.tag.isDarwin()) "osx-arm64/native"
+        else if (target_result.os.tag == .linux) "linux-x64/native"
+        else if (target_result.os.tag == .windows) "win-x64/native"
+        else "unknown/native",
     }) catch @panic("install path concat failed");
     b.lib_dir = native_dir;
     // On Windows zig installs the .dll into `bin/` and the import .lib into `lib/`. We want

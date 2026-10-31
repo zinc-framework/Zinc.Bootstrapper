@@ -3,7 +3,7 @@ const Build = std.Build;
 
 // zinc_platform — Zinc-owned platform abstractions (memory, screenshot readback).
 // Mirrors libs/stb/build/build.zig. Outputs zinc_platform.{dll,dylib,so} into
-// out/libs/runtimes/<rid>/native/ alongside sokol/stb/box2d.
+// out/libs/runtimes/<rid>/native/ (runtimes-debug/ for a Debug build) alongside sokol/stb/box2d.
 //
 // What lives here:
 //   zinc_memory.c          — VirtualAlloc/mmap wrappers (zinc_mem_*). Cross-platform.
@@ -67,13 +67,17 @@ pub fn build(b: *Build) void {
     });
 
     const tgt = target.result;
+    // Debug builds land in runtimes-debug/, optimized ones in runtimes/. Zinc.csproj picks
+    // between them by build configuration.
+    const runtimes = if (optimize == .Debug) "/libs/runtimes-debug/" else "/libs/runtimes/";
     const native_dir = std.mem.concat(b.allocator, u8, &.{
         file_path,
-        if (tgt.cpu.arch.isWasm()) "/libs/runtimes/browser-wasm/native"
-        else if (tgt.os.tag.isDarwin()) "/libs/runtimes/osx-arm64/native"
-        else if (tgt.os.tag == .linux) "/libs/runtimes/linux-x64/native"
-        else if (tgt.os.tag == .windows) "/libs/runtimes/win-x64/native"
-        else "/libs/runtimes/unknown/native",
+        runtimes,
+        if (tgt.cpu.arch.isWasm()) "browser-wasm/native"
+        else if (tgt.os.tag.isDarwin()) "osx-arm64/native"
+        else if (tgt.os.tag == .linux) "linux-x64/native"
+        else if (tgt.os.tag == .windows) "win-x64/native"
+        else "unknown/native",
     }) catch @panic("install path concat failed");
     b.lib_dir = native_dir;
     // Windows separates the .dll (bin) from its import .lib (lib). Force both into the same
