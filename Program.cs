@@ -324,8 +324,12 @@ Console.WriteLine($"ZigDocPath: {ZigDocPath}");
 // put AVX2 and FMA into every lib: a crash on any player's CPU without them. x86-64-v2 is the
 // floor .NET itself needs; Apple M1 is the oldest Apple Silicon.
 var zigCpu = OperatingSystem.IsMacOS() ? "apple_m1" : "x86_64_v2";
+// On macOS, -Dtarget names the oldest macOS the libs load on, which becomes each dylib's minos.
+// zig's default is the build machine's own macOS version. 14.0 is .NET 11's floor. Named rather
+// than native, zig no longer finds the SDK itself: sokol's and zinc_platform's build.zig add it.
+var zigTarget = OperatingSystem.IsMacOS() ? " -Dtarget=aarch64-macos.14.0" : "";
 string zigBuild(string libName, string optimize) =>
-    $"build -Dfile-path={outputPath} -Dcpu={zigCpu} -Doptimize={optimize} --build-file {buildpath(libName)}";
+    $"build -Dfile-path={outputPath}{zigTarget} -Dcpu={zigCpu} -Doptimize={optimize} --build-file {buildpath(libName)}";
 
 foreach (var l in buildLibs)
 {

@@ -21,6 +21,18 @@ pub fn resolveSokolBackend(backend: SokolBackend, target: std.Target) SokolBacke
     return .gl;
 }
 
+// zig only finds the macOS SDK by itself when the target is the build machine's own OS. A macOS
+// named with -Dtarget (aarch64-macos.14.0, which sets the dylib's minos) gets the SDK's frameworks,
+// headers (the frameworks' own include <libDER/...> and the like) and stubs (libobjc) from xcrun.
+// Not --sysroot: zig prefixes every library path with it.
+fn addMacSdkPaths(b: *Build, mod: *Build.Module, target: Build.ResolvedTarget) void {
+    if (target.query.isNativeOs()) return;
+    const sdk = std.mem.trim(u8, b.run(&.{ "xcrun", "--sdk", "macosx", "--show-sdk-path" }), " \r\n");
+    mod.addFrameworkPath(.{ .cwd_relative = b.pathJoin(&.{ sdk, "System/Library/Frameworks" }) });
+    mod.addSystemIncludePath(.{ .cwd_relative = b.pathJoin(&.{ sdk, "usr/include" }) });
+    mod.addLibraryPath(.{ .cwd_relative = b.pathJoin(&.{ sdk, "usr/lib" }) });
+}
+
 pub fn build(b: *Build) !void {
     const opt_use_gl = b.option(bool, "gl", "Force OpenGL (default: false)") orelse false;
     const opt_use_wgpu = b.option(bool, "wgpu", "Force WebGPU (default: false, web only)") orelse false;
@@ -116,6 +128,7 @@ pub fn buildLibSokol(b: *Build, mod: *Build.Module, lib: *Build.Step.Compile, op
     cppflags.append(b.allocator, backend_define) catch @panic("OOM");
 
     if (tgt.os.tag.isDarwin()) {
+        if (tgt.os.tag == .macos) addMacSdkPaths(b, mod, options.target);
         cflags.append(b.allocator, "-ObjC") catch @panic("OOM");
         cppflags.append(b.allocator, "-ObjC++") catch @panic("OOM");
         mod.linkFramework("Foundation", .{});

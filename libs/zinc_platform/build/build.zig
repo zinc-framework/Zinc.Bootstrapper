@@ -43,6 +43,7 @@ pub fn build(b: *Build) void {
     // Backend-specific: Metal (.m, ObjC+ARC) on Apple, D3D11/GL/GLES (.c) elsewhere.
     const os = target.result.os.tag;
     if (os.isDarwin()) {
+        if (os == .macos) addMacSdkPaths(b, mod, target);
         mod.addCSourceFile(.{ .file = b.path("screenshot.m"), .flags = &objc_flags });
         mod.addCSourceFile(.{ .file = b.path("zinc_window.m"), .flags = &objc_flags });
         mod.linkFramework("Metal", .{});
@@ -87,4 +88,16 @@ pub fn build(b: *Build) void {
     b.exe_dir = native_dir;
 
     b.installArtifact(lib);
+}
+
+// zig only finds the macOS SDK by itself when the target is the build machine's own OS. A macOS
+// named with -Dtarget (aarch64-macos.14.0, which sets the dylib's minos) gets the SDK's frameworks,
+// headers (the frameworks' own include <libDER/...> and the like) and stubs (libobjc) from xcrun.
+// Not --sysroot: zig prefixes every library path with it. Same as sokol's build.zig.
+fn addMacSdkPaths(b: *Build, mod: *Build.Module, target: Build.ResolvedTarget) void {
+    if (target.query.isNativeOs()) return;
+    const sdk = std.mem.trim(u8, b.run(&.{ "xcrun", "--sdk", "macosx", "--show-sdk-path" }), " \r\n");
+    mod.addFrameworkPath(.{ .cwd_relative = b.pathJoin(&.{ sdk, "System/Library/Frameworks" }) });
+    mod.addSystemIncludePath(.{ .cwd_relative = b.pathJoin(&.{ sdk, "usr/include" }) });
+    mod.addLibraryPath(.{ .cwd_relative = b.pathJoin(&.{ sdk, "usr/lib" }) });
 }
